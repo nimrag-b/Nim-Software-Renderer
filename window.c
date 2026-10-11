@@ -142,7 +142,7 @@ SR_Window* SR_CreateWindow(int width, int height, void (*get_render_target)(void
     window->get_render_target_callback = get_render_target;
 
     
-    SetWindowLongPtr(hwnd,GWLP_USERDATA,window);
+    SetWindowLongPtr(hwnd,GWLP_USERDATA,(LONG_PTR)window);
     
     puts("setcallback");
 
