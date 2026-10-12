@@ -1,0 +1,11 @@
+TODO: Documentation for outward facing API
+
+TODO: Add more funcs for managing SR_Pipeline State
+
+TODO: Multithread rendering?
+
+TODO: Better built-in platform support (currently just a small class for attaching to a HWND)
+    Possible add builtin support for rendering to SDL_Texture from SDL3 (and possibly SDL2?)
+TODO: Callbacks for updating the target mDest
+
+TODO: Implement some sort of profiler
