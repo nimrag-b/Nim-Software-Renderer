@@ -1,7 +1,7 @@
 #ifndef _SR_PLATFORM_H_
 #define _SR_PLATFORM_H_
 
-#include <SR.h>
+#include "SR.h"
 #include <windef.h>
 
 

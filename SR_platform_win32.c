@@ -39,6 +39,7 @@ graphics_buffer SR_HWNDCreateGraphicsBuffer(int w, int h)
 
 void SR_HWNDUpdateRenderTarget(SR_HWNDAttached* sr_hwnd, int width, int height){
 
+    if(sr_hwnd == NULL) return;
     DeleteObject(sr_hwnd->mFrontBuffer.hbm);
     sr_hwnd->mFrontBuffer = SR_HWNDCreateGraphicsBuffer(width, height);
     SR_UpdateRenderTarget(sr_hwnd->pipeline, sr_hwnd->mFrontBuffer.px, sr_hwnd->mFrontBuffer.w, sr_hwnd->mFrontBuffer.h);
@@ -61,7 +62,7 @@ SR_HWNDAttached* SR_AttachToHWND(HWND hwnd, SR_Pipeline* pipeline){
     sr_hwnd->pipeline = pipeline;
     RECT rect;
     GetWindowRect(hwnd, &rect);
-    sr_hwnd->mFrontBuffer = SR_HWNDCreateGraphicsBuffer(rect.right - rect.left, rect.bottom - rect.top);
+    SR_HWNDUpdateRenderTarget(sr_hwnd,rect.right - rect.left, rect.bottom - rect.top);
 
     return sr_hwnd;
 }
@@ -70,4 +71,16 @@ void SR_DetachFromHWND(SR_HWNDAttached* sr_hwnd){
 
     DeleteObject(sr_hwnd->mFrontBuffer.hbm);
     free(sr_hwnd);
+}
+
+
+long long SR_GetTicks(){
+    LARGE_INTEGER cur;
+    QueryPerformanceCounter(&cur);
+    return cur.QuadPart;
+}
+long long SR_TicksPerSecond(){
+    LARGE_INTEGER freq;
+    QueryPerformanceFrequency(&freq);
+    return freq.QuadPart;
 }

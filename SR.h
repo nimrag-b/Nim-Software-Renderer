@@ -50,4 +50,7 @@ void SR_Clear(SR_Pipeline* pipeline, fcol4 c);
 void SR_ClearDepthBuffer(SR_Pipeline* pipeline);
 
 
+long long SR_GetTicks();
+long long SR_TicksPerSecond();
+
 #endif //_SR_HEADER_

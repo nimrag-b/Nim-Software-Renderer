@@ -96,13 +96,15 @@ void _SR_FreeDepthBuf(SR_Pipeline* pipeline){
 float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, float x, float y, float z);
 fcol4 SR_DefaultPixelFunc(SR_Point* p);
 void SR_RasterizeTris(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Point* p3);
+void SR_RasterizeLines(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Point* p3);
+
 
 SR_Pipeline* SR_CreatePipeline(void* initalTarget, int w, int h){
 
     SR_Pipeline* pipeline = malloc(sizeof(SR_Pipeline));
 
     //bind initial data
-    pipeline->mDest.px = (float4*)initalTarget;
+    pipeline->mDest.px = (col4*)initalTarget;
     pipeline->mScrWidth = w;
     pipeline->mScrHeight = h;
 
@@ -147,7 +149,7 @@ void SR_ToggleDepthTest(SR_Pipeline* pipeline, int enabled){
 }
 
 SR_ERROR SR_UpdateRenderTarget(SR_Pipeline* pipeline, void* target, int w, int h){
-    pipeline->mDest.px = (float4*)target;
+    pipeline->mDest.px = (col4*)target;
     pipeline->mScrWidth = w;
     pipeline->mScrHeight = h;
 
@@ -216,29 +218,20 @@ void SR_Persp(SR_Pipeline* pipeline, float near, float far, float left, float ri
 //Drawing Functions
 
 
-void SR_TransformToPixelColour(char pixels[4], fcol4 v){
+col4 SR_TransformToPixelColour(fcol4 v){
 
-    pixels[0] = CLAMP(v.r,0,1) * 255;
-    pixels[0] = CLAMP(v.b,0,1) * 255;
-    pixels[0] = CLAMP(v.g,0,1) * 255;
-    pixels[0] = CLAMP(v.a,0,1) * 255;
+    //TODO dont hardcode this to BGRA
+    return (col4) {CLAMP(v.b,0,1) * 255,CLAMP(v.g,0,1) * 255,  CLAMP(v.r,0,1) * 255, CLAMP(v.a,0,1) * 255};
 }
 
 
 void SR_Clear(SR_Pipeline* pipeline, fcol4 c){
 
-    char pix[4];
-    SR_TransformToPixelColour(pix,c);
-
-    int v = pix[0] + (pix[1] << 8) + (pix[2] << 16) + (pix[3] << 24);
-
+    col4 pix = SR_TransformToPixelColour(c);
     unsigned long long count = pipeline->mScrWidth * pipeline->mScrHeight;
-
-    int* ptr = pipeline->mDest.px;
-
     for (unsigned long long i = 0; i < count; i++)
     {
-        ptr[i] = v;
+        pipeline->mDest.px[i] = pix;
     }
     
 }
@@ -267,15 +260,27 @@ fcol4 SR_DefaultPixelFunc(SR_Point* p){
 }
 
 
+void SR_DrawPixel(SR_Pipeline* pipeline, int x, int y, fcol4 col){
+    if(!pipeline->mDest.px){
+        return;
+    }
+    if (x >= 0 && x < pipeline->mScrWidth && y >= 0 && y < pipeline->mScrHeight){
+
+        //transform and copy
+        pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_TransformToPixelColour(col);
+    }
+}
+
 void SR_DrawPoint(SR_Pipeline* pipeline, int x, int y, SR_Point* p){
     if(!pipeline->mDest.px){
         return;
     }
     if (x >= 0 && x < pipeline->mScrWidth && y >= 0 && y < pipeline->mScrHeight){
 
-        char* ptr = &pipeline->mDest.px[x + (y * pipeline->mScrWidth)];
-        //transform and copy direct to screen
-        SR_TransformToPixelColour(ptr, pipeline->mPixelFunc(p));
+        
+        //transform and copy
+        pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_TransformToPixelColour(pipeline->mPixelFunc(p));
+
 
     }
 }
@@ -289,8 +294,8 @@ void SR_RasterizeTris(
 
     int min_x = MIN(MIN(p1->pos.x, p2->pos.x), p3->pos.x);
     int max_x = MAX(MAX(p1->pos.x, p2->pos.x), p3->pos.x);
-    int min_y = MIN(MIN(p1->pos.x, p2->pos.y), p3->pos.z);
-    int max_y = MAX(MAX(p1->pos.x, p2->pos.y), p3->pos.z);
+    int min_y = MIN(MIN(p1->pos.y, p2->pos.y), p3->pos.y);
+    int max_y = MAX(MAX(p1->pos.y, p2->pos.y), p3->pos.y);
 
     float f = (p1->pos.x *(p2->pos.y - p3->pos.y)) + (p2->pos.x *(p3->pos.y - p1->pos.y)) + (p3->pos.x *(p1->pos.y - p2->pos.y));
 
@@ -301,7 +306,7 @@ void SR_RasterizeTris(
     float m20, m21, m22;
 
     m00 = (p2->pos.x*p3->pos.y) - (p3->pos.x*p2->pos.y);
-    m10 = (p3->pos.x*p1->pos.y) - (p1->pos.x*p3->pos.x);
+    m10 = (p3->pos.x*p1->pos.y) - (p1->pos.x*p3->pos.y);
     m20 = (p1->pos.x*p2->pos.y) - (p2->pos.x*p1->pos.y);
 
     m01 = p2->pos.y - p3->pos.y;
@@ -320,7 +325,7 @@ void SR_RasterizeTris(
     if(pipeline->mCullmode != 0){ //cullmode of zero means dont cull
         int winding = (-(p2->pos.y - p1->pos.y) * (p3->pos.x - p1->pos.x)) + ((p2->pos.x - p1->pos.x) * (p3->pos.y - p1->pos.y));
 
-        //printf("Winding = %d\n",winding);
+        printf("Winding = %d\n",winding);
         //do some bitwise trickery to determine wether to cull or not
         if((winding ^ pipeline->mCullmode) >= 0){
             return;
@@ -375,8 +380,95 @@ void SR_RasterizeTris(
 }
 
 
-void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsigned long long count){
+static void line_low(SR_Pipeline* pipeline, int x1, int y1, int x2, int y2){
+    int dx = x2 - x1;
+    int dy = y2 - y1;
+    int yi = 1;
+    if(dy < 0){
+        yi = -1;
+        dy = -dy;
+    }
+    int D = (2 * dy) - dx;
+    int y = y1;
 
+    for (int x = x1; x < x2; ++x)
+    {
+
+        SR_DrawPixel(pipeline,x, y,(fcol4){0,0,0,1});
+        if(D > 0){
+            y += yi;
+            D = D + (2 * (dy - dx));
+        }
+        else{
+            D = D + 2*dy;
+        }
+    }
+
+}
+
+static void line_high(SR_Pipeline* pipeline, int x1, int y1, int x2, int y2){
+    int dx = x2 - x1;
+    int dy = y2 - y1;
+    int xi = 1;
+    if(dx < 0){
+        xi = -1;
+        dx = -dx;
+    }
+    int D = (2 * dx) - dy;
+    int x = x1;
+
+    for (int y = y1; y < y2; ++y)
+    {
+
+        SR_DrawPixel(pipeline,x, y,(fcol4){0,0,0,1});
+        if(D > 0){
+            x += xi;
+            D = D + (2 * (dx - dy));
+        }
+        else{
+            D = D + 2*dx;
+        }
+    }
+
+}
+
+static void bresenham(SR_Pipeline* pipeline, int x1, int y1, int x2, int y2){
+
+    //printf("[%d, %d] -> [%d, %d]\n",x1,y1,x2,y2);
+    if(abs(y2 - y1) < abs(x2 - x1)){
+        if(x1 > x2){
+            line_low(pipeline, x2,y2,x1,y1);
+        }
+        else{
+            line_low(pipeline, x1,y1,x2,y2);
+        }
+    }
+    else{
+        if(y1 > y2){
+            line_high(pipeline, x2,y2,x1,y1);
+        }
+        else{
+            line_high(pipeline, x1,y1,x2,y2);
+        }
+    }
+}
+
+void SR_RasterizeLines(SR_Pipeline* pipeline,
+    SR_Point* p1, 
+    SR_Point* p2,  
+    SR_Point* p3){
+    bresenham(pipeline, p1->pos.x,p1->pos.y,p2->pos.x,p2->pos.y);
+    bresenham(pipeline, p2->pos.x,p2->pos.y,p3->pos.x,p3->pos.y);
+    bresenham(pipeline, p1->pos.x,p1->pos.y,p3->pos.x,p3->pos.y);
+}
+
+
+#define LOG_DRAW
+
+void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsigned long long count){
+#ifdef LOG_DRAW
+    puts("----BEGINRENDER----");
+#endif
     int c = 0;
 
     //extract these before the loop so we dont have to access a pointer in the tight loop
@@ -393,15 +485,16 @@ void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsign
         SR_Point p[3] = {0};
 
         int ind[3];
-        ind[0] = (indices[(i)+0] * layout.mStride);
-        ind[1] = (indices[(i)+1] * layout.mStride);
-        ind[2] = (indices[(i)+2] * layout.mStride);
-
-
+        ind[0] = (indices[i+0] * layout.mStride);
+        ind[1] = (indices[i+1] * layout.mStride);
+        ind[2] = (indices[i+2] * layout.mStride);
+#ifdef LOG_DRAW
+        puts("--BEGINTRI--");
+#endif
         for (int v = 0; v < 3; v++)
         {
             float* f = vertices + ind[v];
-            //load colout first for cache coherency
+
             switch (layout.mColFmt)
             {
             case SR_COLOUR_EMPTY:
@@ -419,18 +512,29 @@ void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsign
                 break;
             }
             
-            p[v].pos = pipeline->mVertexFunc(modelview, persp, f[layout.mPosStart],f[layout.mPosStart + 1],f[layout.mPosStart + 1]);
+            p[v].pos = pipeline->mVertexFunc(modelview, persp, f[layout.mPosStart],f[layout.mPosStart + 1],f[layout.mPosStart + 2]);
 
-            p[v].pos.x /= p[v].pos.z;
-            p[v].pos.y /= p[v].pos.z;
+            int ox = COORD_NORMALISE(p[v].pos.x / p[v].pos.z) * pipeline->mScrWidth;
+            int oy = COORD_NORMALISE(p[v].pos.y / p[v].pos.z) * pipeline->mScrHeight;
+#ifdef LOG_DRAW
+            printf("[%d] -> (%.1f,%.1f,%.1f,%.1f) -> (%.1f,%.1f,%.1f,%.1f) -> (%d,%d)\n",ind[v], f[layout.mPosStart],f[layout.mPosStart + 1],f[layout.mPosStart + 1],1.0f,p[v].pos.x,p[v].pos.y,p[v].pos.z,p[v].pos.w, ox,oy);
+#endif
+            p[v].pos.x = ox;
+            p[v].pos.y = oy;
         }
 
-        //printf("(%.1f,%.1f,%.1f,%.1f) -> (%.1f,%.1f,%.1f,%.1f) -> (%.1f,%.1f,%.1f,%.1f) -> (%.1f,%.1f)\n", x1,y1,z1,1.0f, p1.x,p1.y,p1.z,p1.w, p11.x, p11.y, p11.z, p11.w, p11.x/p11.z,p11.y/p11.z);
 
+        //SR_RasterizeTris(pipeline, &p[0], &p[1], &p[2]);
+        //SR_RasterizeLines(pipeline, &p[0], &p[1], &p[2]);
         pipeline->mRasterizeFunc(pipeline, &p[0], &p[1], &p[2]);
+#ifdef LOG_DRAW
+        puts("--ENDTRI--");
+#endif
         c++;
     }
-
+#ifdef LOG_DRAW
+     puts("----ENDRENDER----");
     //printf("rendered %d tris\n",c);
+#endif
     
 }

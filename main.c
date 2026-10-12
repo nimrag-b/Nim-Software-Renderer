@@ -4,6 +4,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+#include "stdio.h"
+
 int should_quit = 0;
 
 
@@ -140,7 +142,8 @@ HWND MakeWindow(int width, int height){
 void render(SR_Pipeline* pipeline){
     //printf("rendering\n");
     //clear(COLOUR_WHITE);
-    clear_depth_buffer();
+    SR_Clear(pipeline, (fcol4){1,1,1,1});
+    SR_ClearDepthBuffer(pipeline);
 
 
     //cullmode = CULL_NONE;
@@ -155,21 +158,36 @@ void render(SR_Pipeline* pipeline){
     enum SR_LAYOUT_PROP props[] = {SR_LAYOUT_POS_XYZ_F, SR_LAYOUT_COLOUR_RGB_F};
     SR_BindLayout(pipeline,props,2);
 
-    SR_DrawIndexed(pipeline,cubeverts,cubeints,12)
+    SR_DrawIndexed(pipeline,cubeverts,cubeints,12);
 }
-int main(int argc, char** argv){
 
-    HWND hwnd = MakeWindow(400,600);
+
+int main(){
+
+    HWND hwnd = MakeWindow(600,400);
     SR_Pipeline* pipeline = SR_CreatePipeline(NULL,0,0);
-    SR_ToggleDepthTest(pipeline, 0);
+
+    SR_PerspFOV(pipeline,0.1f,1000,600.0f/400.0f,70);
+    
         
     SR_HWNDAttached* sr_hwnd = SR_AttachToHWND(hwnd, pipeline);
 
+    SR_ToggleDepthTest(pipeline, 1);
+
     SetWindowLongPtr(hwnd,GWLP_USERDATA,(LONG_PTR)sr_hwnd);
 
-    
-
+    long long freq = SR_TicksPerSecond();
+    long long last = SR_GetTicks();
+    float t = 0;
     while(!should_quit){
+        long long cur = SR_GetTicks();
+
+        double delta = (cur - last) / (double)freq;
+
+        last = cur;
+
+
+
         MSG msg = {0};
         while (PeekMessage(&msg, hwnd,  0, 0, PM_REMOVE)) 
         { 
@@ -178,7 +196,8 @@ int main(int argc, char** argv){
 
         }
 
-        mat4x4 mv = mat4transform(1,1,1,0,0,-5,3,0,0);
+        t += delta;
+        mat4x4 mv = mat4transform(1,1,1, 0,0,-5,0,t,0);
         SR_BindModelview(pipeline, &mv);
 
         render(pipeline);
