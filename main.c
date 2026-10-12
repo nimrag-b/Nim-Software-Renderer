@@ -55,7 +55,11 @@ void OnSize(HWND hwnd, UINT flag, int width, int height)
     puts("onsize");
 
     SR_HWNDAttached* sr_hwnd = (SR_HWNDAttached*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+    //may not be yet initalisedd the first time this is called
+    if(sr_hwnd == NULL) return;
     SR_HWNDUpdateRenderTarget(sr_hwnd,width,height);
+    SR_PerspFOV(sr_hwnd->pipeline,0.1f,1000,(float)width/(float)height,70);
 }
 
 

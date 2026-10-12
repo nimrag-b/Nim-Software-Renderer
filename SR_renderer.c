@@ -292,10 +292,10 @@ void SR_RasterizeTris(
     SR_Point* p2,  
     SR_Point* p3){
 
-    int min_x = MIN(MIN(p1->pos.x, p2->pos.x), p3->pos.x);
-    int max_x = MAX(MAX(p1->pos.x, p2->pos.x), p3->pos.x);
-    int min_y = MIN(MIN(p1->pos.y, p2->pos.y), p3->pos.y);
-    int max_y = MAX(MAX(p1->pos.y, p2->pos.y), p3->pos.y);
+    int min_x = (MIN(MIN(p1->pos.x, p2->pos.x), p3->pos.x));
+    int max_x = (MAX(MAX(p1->pos.x, p2->pos.x), p3->pos.x));
+    int min_y = (MIN(MIN(p1->pos.y, p2->pos.y), p3->pos.y));
+    int max_y = (MAX(MAX(p1->pos.y, p2->pos.y), p3->pos.y));
 
     float f = (p1->pos.x *(p2->pos.y - p3->pos.y)) + (p2->pos.x *(p3->pos.y - p1->pos.y)) + (p3->pos.x *(p1->pos.y - p2->pos.y));
 
@@ -340,12 +340,15 @@ void SR_RasterizeTris(
     {
         for (int i = min_x; i < max_x; i++)
         {
-            float bx =  ((m00 * 1) + (m01 * i) + (m02 * j)) * f;
-            float by =  ((m10 * 1) + (m11 * i) + (m12 * j)) * f;
-            float bz =  ((m20 * 1) + (m21 * i) + (m22 * j)) * f;
+            float fi = i + 0.5f;
+            float fj = j + 0.5f;
+            
+            float bx =  ((m00 * 1) + (m01 * fi) + (m02 * fj)) * f;
+            float by =  ((m10 * 1) + (m11 * fi) + (m12 * fj)) * f;
+            float bz =  ((m20 * 1) + (m21 * fi) + (m22 * fj)) * f;
 
             //in triangle
-            if(bx > 0 && by > 0 && bz > 0){
+            if(bx > -0 && by > 0 && bz > 0){
 
                 SR_Point p;
                 // first calculate the depth and throw this pixel away if its not going to be visible
@@ -463,7 +466,7 @@ void SR_RasterizeLines(SR_Pipeline* pipeline,
 }
 
 
-#define LOG_DRAW
+//#define LOG_DRAW
 
 void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsigned long long count){
 #ifdef LOG_DRAW

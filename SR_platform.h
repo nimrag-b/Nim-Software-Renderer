@@ -5,7 +5,18 @@
 #include <windef.h>
 
 
-typedef struct SR_HWNDAttached SR_HWNDAttached;
+typedef struct {
+    HBITMAP hbm;
+    void* px;
+    int w, h;
+} graphics_buffer;
+
+typedef struct SR_HWNDAttached{
+    SR_Pipeline* pipeline;
+    graphics_buffer mFrontBuffer;
+    HWND mWindow;
+
+} SR_HWNDAttached;
 
 
 void SR_HWNDUpdateRenderTarget(SR_HWNDAttached* sr_hwnd, int width, int height);

@@ -2,18 +2,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-typedef struct {
-    HBITMAP hbm;
-    void* px;
-    int w, h;
-} graphics_buffer;
 
-typedef struct SR_HWNDAttached{
-    SR_Pipeline* pipeline;
-    graphics_buffer mFrontBuffer;
-    HWND mWindow;
-
-} SR_HWNDAttached;
 
 graphics_buffer SR_HWNDCreateGraphicsBuffer(int w, int h)
 {
