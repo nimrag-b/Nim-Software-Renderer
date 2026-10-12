@@ -1,6 +1,8 @@
 #ifndef _SR_HEADER_
 #define _SR_HEADER_
 
+#include "SR_matrix.h"
+
 enum SR_CULLMODE{
     SR_CULL_NONE = 0,
     SR_CULL_FRONT = 1,
@@ -13,7 +15,7 @@ enum SR_DRAWMODE{
     SR_DRAW_LINES
 };
 
-enum SR_LAYOUT_PROP{
+typedef enum SR_LAYOUT_PROP{
     SR_LAYOUT_POS_XYZ_F,
 
     SR_LAYOUT_COLOUR_RGB_F,
@@ -23,7 +25,7 @@ enum SR_LAYOUT_PROP{
 
     SR_LAYOUT_TEXCOORD_UV_F,
     
-};
+} SR_LAYOUT_PROP;
 
 typedef enum SR_ERROR{
     SR_ERR_NONE = 0,
@@ -43,6 +45,9 @@ void SR_PerspFOV(SR_Pipeline* pipeline, float near, float far, float aspect, flo
 void SR_Persp(SR_Pipeline* pipeline, float near, float far, float left, float right, float top, float bottom);
 
 void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsigned long long count);
+
+void SR_Clear(SR_Pipeline* pipeline, fcol4 c);
+void SR_ClearDepthBuffer(SR_Pipeline* pipeline);
 
 
 #endif //_SR_HEADER_

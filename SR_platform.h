@@ -2,6 +2,9 @@
 #define _SR_PLATFORM_H_
 
 #include <SR.h>
+#include <windef.h>
+
+
 typedef struct SR_HWNDAttached SR_HWNDAttached;
 
 

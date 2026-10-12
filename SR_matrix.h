@@ -2,8 +2,20 @@
 #define _SR_MATRIX_H_
 
 typedef struct{
-    float x, y, z ,w;
+    float x, y, z, w;
 } float4;
+
+typedef struct{
+    float r, g, b, a;
+} fcol4;
+
+typedef struct{
+    char r, g, b, a;
+} col4;
+
+typedef struct{
+    float x, y;
+} float2;
 
 typedef struct{
 
