@@ -33,7 +33,7 @@ dummy:
 	$(info Please Specify target)
 
 tests: ${OBJDIR} $(OBJ) 
-	$(CC) $(CFLAGS) -I$(INCLUDEDIR) $(patsubst %, ${OBJDIR}/%,$(notdir $(OBJ))) ../tests/windows/main.c -lGdi32 -o ../tests/windows/sr
+	$(CC) $(CFLAGS) -I$(INCLUDEDIR) $(patsubst %, ${OBJDIR}/%,$(notdir $(OBJ))) ../examples/windows/main.c -lGdi32 -o ../examples/windows/sr
 
 $(OBJ): %.o: %.c
 	$(CC) $(CFLAGS) -I$(INCLUDEDIR) -c $^ -o ${OBJDIR}/$(notdir $@)

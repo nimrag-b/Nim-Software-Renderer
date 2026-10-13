@@ -272,6 +272,10 @@ fcol4 SR_DefaultPixelFunc(SR_Point* p){
     return p->col;
 }
 
+void SR_DrawPixelUnckecked(SR_Pipeline* pipeline, int x, int y, fcol4 col){
+    //transform and copy
+    pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_TransformToPixelColour(pipeline->mDest.fmt, col);
+}
 
 void SR_DrawPixel(SR_Pipeline* pipeline, int x, int y, fcol4 col){
     if(!pipeline->mDest.px){
@@ -279,8 +283,7 @@ void SR_DrawPixel(SR_Pipeline* pipeline, int x, int y, fcol4 col){
     }
     if (x >= 0 && x < pipeline->mScrWidth && y >= 0 && y < pipeline->mScrHeight){
 
-        //transform and copy
-        pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_TransformToPixelColour(pipeline->mDest.fmt, col);
+        SR_DrawPixelUnckecked(pipeline, x, y, col);
     }
 }
 
@@ -305,10 +308,15 @@ void SR_RasterizeTris(
     SR_Point* p2,  
     SR_Point* p3){
 
-    int min_x = (MIN(MIN(p1->pos.x, p2->pos.x), p3->pos.x));
-    int max_x = (MAX(MAX(p1->pos.x, p2->pos.x), p3->pos.x));
-    int min_y = (MIN(MIN(p1->pos.y, p2->pos.y), p3->pos.y));
-    int max_y = (MAX(MAX(p1->pos.y, p2->pos.y), p3->pos.y));
+    int min_x = CLAMP((MIN(MIN(p1->pos.x, p2->pos.x), p3->pos.x)), 0, pipeline->mScrWidth);
+    int max_x = CLAMP((MAX(MAX(p1->pos.x, p2->pos.x), p3->pos.x)), 0, pipeline->mScrWidth);
+    int min_y = CLAMP((MIN(MIN(p1->pos.y, p2->pos.y), p3->pos.y)), 0, pipeline->mScrHeight);
+    int max_y = CLAMP((MAX(MAX(p1->pos.y, p2->pos.y), p3->pos.y)), 0, pipeline->mScrHeight);
+
+    //point offscreen
+    if(max_x == 0 || max_y == 0){
+        return;
+    }
 
     float f = (p1->pos.x *(p2->pos.y - p3->pos.y)) + (p2->pos.x *(p3->pos.y - p1->pos.y)) + (p3->pos.x *(p1->pos.y - p2->pos.y));
 
@@ -387,8 +395,8 @@ void SR_RasterizeTris(
                 p.col.b = (p1->col.b * bx) + (p2->col.b * by) + (p3->col.b * bz);
                 p.col.a = 1; //no transparency support yet so alpha is hardcoded to 1
 
-
-                SR_DrawPoint(pipeline, i,j, &p);
+                //pixel should be on screen by this point
+                SR_DrawPixelUnckecked(pipeline, i,j, pipeline->mPixelFunc(&p));
             }
         }
     }
@@ -485,6 +493,13 @@ void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsign
 #ifdef LOG_DRAW
     puts("----BEGINRENDER----");
 #endif
+
+    //assert that a destination does exit
+    if(!pipeline->mDest.px){
+        puts("WARNING: Destination not set in SR_pipeline");
+        return;
+    }
+
     int c = 0;
 
     //extract these before the loop so we dont have to access a pointer in the tight loop
