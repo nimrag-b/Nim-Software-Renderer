@@ -66,7 +66,7 @@ For a simple setup, see this code snippet:
     SR_BindLayout(pipeline,props,2);
 
     // Draw to surface!
-    SR_DrawIndexed(pipeline,MY_VERTEX_LIST,MY_INDEX_LIST,MY_VERTEX_COUNT);
+    SR_DrawIndexed(pipeline,MY_VERTEX_LIST,MY_INDEX_LIST,MY_INDEX_COUNT);
 
     //Most platforms will not let you draw direct to screen, and so you will probably have to copy from your buffer to the screen here
 
