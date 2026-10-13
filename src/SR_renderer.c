@@ -146,6 +146,10 @@ void SR_ToggleDepthTest(SR_Pipeline* pipeline, int enabled){
     
 }
 
+void SR_SetCullMode(SR_Pipeline* pipeline, enum SR_CULLMODE mode){
+    pipeline->mCullmode = mode;
+}
+
 SR_ERROR SR_UpdateRenderTarget(SR_Pipeline* pipeline, void* target, int w, int h, SR_COLOURFORMAT format){
     pipeline->mDest.px = (col4*)target;
     pipeline->mDest.fmt = format;
