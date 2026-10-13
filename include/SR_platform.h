@@ -2,6 +2,9 @@
 #define _SR_PLATFORM_H_
 
 #include "SR.h"
+
+#ifdef _WIN32
+
 #include <windef.h>
 
 
@@ -24,5 +27,5 @@ void SR_HWNDRender(SR_HWNDAttached* sr_hwnd, HDC hdc);
 
 SR_HWNDAttached* SR_AttachToHWND(HWND hwnd, SR_Pipeline* pipeline);
 void SR_DetachFromHWND(SR_HWNDAttached* sr_hwnd);
-
+#endif
 #endif

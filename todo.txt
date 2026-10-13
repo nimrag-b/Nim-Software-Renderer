@@ -1,3 +1,5 @@
+TODO: remove some of the defines from the generated single header file
+
 TODO: Documentation for outward facing API
 
 TODO: Add more funcs for managing SR_Pipeline State

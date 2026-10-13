@@ -52,6 +52,7 @@ int cubeints[] = {
 
 void OnSize(HWND hwnd, UINT flag, int width, int height)
 {
+    flag = flag;
     puts("onsize");
 
     SR_HWNDAttached* sr_hwnd = (SR_HWNDAttached*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
@@ -172,7 +173,7 @@ int main(){
     SR_Pipeline* pipeline = SR_CreatePipeline(NULL,0,0);
 
     SR_PerspFOV(pipeline,0.1f,1000,600.0f/400.0f,70);
-    
+
         
     SR_HWNDAttached* sr_hwnd = SR_AttachToHWND(hwnd, pipeline);
 

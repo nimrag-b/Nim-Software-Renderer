@@ -91,6 +91,7 @@ mat4x4 mat4transpose(mat4x4* m){
     r.m31 = m->m13;
     r.m32 = m->m23;
     r.m33 = m->m33;
+    return r;
 }
 
 mat4x4 mat4mul4(mat4x4* b, mat4x4* a){
