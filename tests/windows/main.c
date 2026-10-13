@@ -170,7 +170,7 @@ void render(SR_Pipeline* pipeline){
 int main(){
 
     HWND hwnd = MakeWindow(600,400);
-    SR_Pipeline* pipeline = SR_CreatePipeline(NULL,0,0);
+    SR_Pipeline* pipeline = SR_CreatePipeline(NULL,0,0, SR_COLOUR_EMPTY);
 
     SR_PerspFOV(pipeline,0.1f,1000,600.0f/400.0f,70);
 

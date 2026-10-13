@@ -3,6 +3,13 @@
 
 #include "SR_matrix.h"
 
+typedef enum{
+    SR_COLOUR_EMPTY,
+    SR_COLOUR_RGB24,
+    SR_COLOUR_RGBA32,
+    SR_COLOUR_BGRA32
+} SR_COLOURFORMAT;
+
 enum SR_CULLMODE{
     SR_CULL_NONE = 0,
     SR_CULL_FRONT = 1,
@@ -35,11 +42,11 @@ typedef enum SR_ERROR{
 
 typedef struct SR_Pipeline SR_Pipeline;
 
-SR_Pipeline* SR_CreatePipeline(void* initalTarget, int w, int h);
+SR_Pipeline* SR_CreatePipeline(void* initalTarget, int w, int h, SR_COLOURFORMAT format);
 void SR_DestroyPipeline(SR_Pipeline* pipeline);
 void SR_ToggleDepthTest(SR_Pipeline* pipeline, int enabled);
-SR_ERROR SR_UpdateRenderTarget(SR_Pipeline* pipeline, void* target, int w, int h);
-SR_ERROR SR_BindLayout(SR_Pipeline* pipeline, enum SR_LAYOUT_PROP* props, int count );
+SR_ERROR SR_UpdateRenderTarget(SR_Pipeline* pipeline, void* target, int w, int h, SR_COLOURFORMAT format);
+SR_ERROR SR_BindLayout(SR_Pipeline* pipeline, enum SR_LAYOUT_PROP* props, int count);
 void SR_BindModelview(SR_Pipeline* pipeline, mat4x4* matrix);
 void SR_PerspFOV(SR_Pipeline* pipeline, float near, float far, float aspect, float FOV);
 void SR_Persp(SR_Pipeline* pipeline, float near, float far, float left, float right, float top, float bottom);

@@ -28,13 +28,10 @@
 
 typedef struct{
     col4 *px;
+    SR_COLOURFORMAT fmt;
 } SR_DestBuf;
 
-typedef enum{
-    SR_COLOUR_EMPTY,
-    SR_COLOUR_RGB24,
-    SR_COLOUR_RGBA32,
-} SR_COLOURFORMAT;
+
 
 #define SR_MAX_PIPELINE_PROPS 16
 typedef struct {
@@ -99,12 +96,13 @@ void SR_RasterizeTris(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Poin
 void SR_RasterizeLines(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Point* p3);
 
 
-SR_Pipeline* SR_CreatePipeline(void* initalTarget, int w, int h){
+SR_Pipeline* SR_CreatePipeline(void* initalTarget, int w, int h, SR_COLOURFORMAT format){
 
     SR_Pipeline* pipeline = malloc(sizeof(SR_Pipeline));
 
     //bind initial data
     pipeline->mDest.px = (col4*)initalTarget;
+    pipeline->mDest.fmt = format;
     pipeline->mScrWidth = w;
     pipeline->mScrHeight = h;
 
@@ -148,8 +146,9 @@ void SR_ToggleDepthTest(SR_Pipeline* pipeline, int enabled){
     
 }
 
-SR_ERROR SR_UpdateRenderTarget(SR_Pipeline* pipeline, void* target, int w, int h){
+SR_ERROR SR_UpdateRenderTarget(SR_Pipeline* pipeline, void* target, int w, int h, SR_COLOURFORMAT format){
     pipeline->mDest.px = (col4*)target;
+    pipeline->mDest.fmt = format;
     pipeline->mScrWidth = w;
     pipeline->mScrHeight = h;
 
@@ -218,16 +217,26 @@ void SR_Persp(SR_Pipeline* pipeline, float near, float far, float left, float ri
 //Drawing Functions
 
 
-col4 SR_TransformToPixelColour(fcol4 v){
+col4 SR_TransformToPixelColour(SR_COLOURFORMAT fmt, fcol4 v){
 
-    //TODO dont hardcode this to BGRA
-    return (col4) {CLAMP(v.b,0,1) * 255,CLAMP(v.g,0,1) * 255,  CLAMP(v.r,0,1) * 255, CLAMP(v.a,0,1) * 255};
+    switch (fmt)
+    {
+    case SR_COLOUR_RGBA32:
+        return (col4) {CLAMP(v.r,0,1) * 255,CLAMP(v.g,0,1) * 255,  CLAMP(v.b,0,1) * 255, CLAMP(v.a,0,1) * 255};
+    
+    case SR_COLOUR_BGRA32:
+        return (col4) {CLAMP(v.b,0,1) * 255,CLAMP(v.g,0,1) * 255,  CLAMP(v.r,0,1) * 255, CLAMP(v.a,0,1) * 255};
+    
+    default:
+        return (col4){0,0,0,255}; //if err, return black;
+    }
+
 }
 
 
 void SR_Clear(SR_Pipeline* pipeline, fcol4 c){
 
-    col4 pix = SR_TransformToPixelColour(c);
+    col4 pix = SR_TransformToPixelColour(pipeline->mDest.fmt, c);
     unsigned long long count = pipeline->mScrWidth * pipeline->mScrHeight;
     for (unsigned long long i = 0; i < count; i++)
     {
@@ -267,7 +276,7 @@ void SR_DrawPixel(SR_Pipeline* pipeline, int x, int y, fcol4 col){
     if (x >= 0 && x < pipeline->mScrWidth && y >= 0 && y < pipeline->mScrHeight){
 
         //transform and copy
-        pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_TransformToPixelColour(col);
+        pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_TransformToPixelColour(pipeline->mDest.fmt, col);
     }
 }
 
@@ -279,7 +288,7 @@ void SR_DrawPoint(SR_Pipeline* pipeline, int x, int y, SR_Point* p){
 
         
         //transform and copy
-        pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_TransformToPixelColour(pipeline->mPixelFunc(p));
+        pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_TransformToPixelColour(pipeline->mDest.fmt, pipeline->mPixelFunc(p));
 
 
     }

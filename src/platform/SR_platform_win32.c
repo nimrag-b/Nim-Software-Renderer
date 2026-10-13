@@ -31,7 +31,7 @@ void SR_HWNDUpdateRenderTarget(SR_HWNDAttached* sr_hwnd, int width, int height){
     if(sr_hwnd == NULL) return;
     DeleteObject(sr_hwnd->mFrontBuffer.hbm);
     sr_hwnd->mFrontBuffer = SR_HWNDCreateGraphicsBuffer(width, height);
-    SR_UpdateRenderTarget(sr_hwnd->pipeline, sr_hwnd->mFrontBuffer.px, sr_hwnd->mFrontBuffer.w, sr_hwnd->mFrontBuffer.h);
+    SR_UpdateRenderTarget(sr_hwnd->pipeline, sr_hwnd->mFrontBuffer.px, sr_hwnd->mFrontBuffer.w, sr_hwnd->mFrontBuffer.h, SR_COLOUR_BGRA32);
 }
 
 void SR_HWNDRender(SR_HWNDAttached* sr_hwnd, HDC hdc){

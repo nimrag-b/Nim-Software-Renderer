@@ -29,10 +29,10 @@ OBJ := $(patsubst %.c,%.o,$(SRC))
 # da rulez
 #---------------------------------------------------------------------------------
 
-dummy: generateheader
+dummy:
 	$(info Please Specify target)
 
-tests: generateheader ${OBJDIR} $(OBJ) 
+tests: ${OBJDIR} $(OBJ) 
 	$(CC) $(CFLAGS) -I$(INCLUDEDIR) $(patsubst %, ${OBJDIR}/%,$(notdir $(OBJ))) ../tests/windows/main.c -lGdi32 -o ../tests/windows/sr
 
 $(OBJ): %.o: %.c
