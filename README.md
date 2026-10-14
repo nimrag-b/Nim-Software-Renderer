@@ -6,7 +6,7 @@ A simple software renderer written in C. It is capable of rendering to anything 
 
 There are two ways to use this project:
 
-1. Direct
+1. Direct (Recommended)
 
 - Copy the source files from the src directory to your project.
 - Add the include folder to your include path
