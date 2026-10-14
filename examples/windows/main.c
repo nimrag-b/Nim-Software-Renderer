@@ -53,7 +53,7 @@ int cubeints[] = {
 void OnSize(HWND hwnd, UINT flag, int width, int height)
 {
     flag = flag;
-    puts("onsize");
+    //puts("onsize");
 
     SR_HWNDAttached* sr_hwnd = (SR_HWNDAttached*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 

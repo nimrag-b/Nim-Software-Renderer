@@ -5,13 +5,14 @@
 #include <stdio.h>
 #include <math.h>
 #include <memory.h>
+#include <float.h>
 
 #define SR_PI 3.14159
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 
-#define CLAMP(v, a, b) (MAX(MIN(v,b),a))
+#define CLAMP(v, a, b) (((v) < (a)) ? (a) : ((v) > (b)) ? (b) : (v))
 
 
 #define OPENGL_COORDS
@@ -197,9 +198,7 @@ void SR_BindModelview(SR_Pipeline* pipeline, mat4x4* matrix){
 
 void SR_PerspFOV(SR_Pipeline* pipeline, float near, float far, float aspect, float FOV){
     float e = 1.0f / tanf((FOV * (SR_PI / 180.0f))/2.0f); 
-
-    printf("e= %f\n",e);
-
+    
     pipeline->mPersp = (mat4x4){
         e/aspect,               0,                      0,      0,
         0,                      e,                      0,      0,
@@ -232,6 +231,7 @@ col4 SR_TransformToPixelColour(SR_COLOURFORMAT fmt, fcol4 v){
         return (col4) {CLAMP(v.b,0,1) * 255,CLAMP(v.g,0,1) * 255,  CLAMP(v.r,0,1) * 255, CLAMP(v.a,0,1) * 255};
     
     default:
+        printf("err format %d\n",fmt);
         return (col4){0,0,0,255}; //if err, return black;
     }
 
@@ -254,10 +254,9 @@ void SR_ClearDepthBuffer(SR_Pipeline* pipeline){
     if(pipeline->mDepthTest == 0) return;
 
     unsigned long long count = pipeline->mScrWidth * pipeline->mScrHeight;
-    for (size_t i = 0; i < count; i++)
-    {
-        pipeline->mDepthBuffer[i] = 1000000.0f;
-    }
+
+    memset(pipeline->mDepthBuffer,127,count*sizeof(float));
+    //printf("clrdpth = %f\n", pipeline->mDepthBuffer[0]);
 }
 
 

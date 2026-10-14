@@ -15,7 +15,7 @@ else
 endif
 
 CC := gcc
-CFLAGS := -g -Wall -Wextra -Werror
+CFLAGS := -g -O3 -Wall -Wextra -Werror
 
 INCLUDEDIR := ../include
 
