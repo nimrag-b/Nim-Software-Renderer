@@ -2,6 +2,11 @@
 
 A simple software renderer written in C. It is capable of rendering to anything that can provide a pointer to a pixel array, and requires no external libraries other than the C stdlib.
 
+## Images
+
+![a cube](srcube.jpg)
+![a monkey](srmonkey.jpg)
+
 ## Installing
 
 There are two ways to use this project:
@@ -33,7 +38,7 @@ One more thing you need to think about is `SR_BindLayout`. This is what tells th
 
 For a simple setup, see this code snippet:
 
-```
+```c
     #include <SR.h>
 
     ...

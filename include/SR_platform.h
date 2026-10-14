@@ -7,7 +7,9 @@
 
 #include <windef.h>
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct {
     HBITMAP hbm;
     void* px;
@@ -27,5 +29,10 @@ void SR_HWNDRender(SR_HWNDAttached* sr_hwnd, HDC hdc);
 
 SR_HWNDAttached* SR_AttachToHWND(HWND hwnd, SR_Pipeline* pipeline);
 void SR_DetachFromHWND(SR_HWNDAttached* sr_hwnd);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
 #endif

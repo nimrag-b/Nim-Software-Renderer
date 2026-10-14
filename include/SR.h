@@ -3,6 +3,10 @@
 
 #include "SR_matrix.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum{
     SR_COLOUR_EMPTY,
     SR_COLOUR_RGB24,
@@ -61,5 +65,10 @@ void SR_ClearDepthBuffer(SR_Pipeline* pipeline);
 
 long long SR_GetTicks();
 long long SR_TicksPerSecond();
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //_SR_HEADER_
