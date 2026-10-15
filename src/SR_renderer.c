@@ -7,6 +7,8 @@
 #include <memory.h>
 #include <float.h>
 
+//#define SR_AFFINE_MAPPING
+
 #define SR_PI 3.14159
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
@@ -367,22 +369,31 @@ int SR_ColFormatLength(SR_COLOURFORMAT fmt){
     }
 }
 
+struct char3 {
+    char a, b, c;
+};
+struct char4 {
+    char a, b, c, d;
+};
 
 fcol4 SR_Sample(SR_Texture* texture, float x, float y){
+
+
+    int len = texture->fmtLength;
     int i = x * texture->w;
     int j = y * texture->h;
     //if(i < 0) i += texture->w;
     //if(j < 0) j += texture->h;
 
-    int len = texture->fmtLength;
 
     //i *= len;
     //j *= len;
+    char* ptr = (char*)texture->pixels + ((i + (j * texture->w)) * len);
 
-    char* ptr = (char*)texture->pixels;
 
     col4 v = {255,255,255,255};
-    memcpy(&v,ptr + ((i + (j * texture->w)) * len),len);
+
+    memcpy(&v,ptr,len);
 
     return SR_TransformToFloatColour(texture->format,v);
 }
@@ -512,12 +523,20 @@ void SR_RasterizeTris(
                 p.col.b = (p1->col.b * bx) + (p2->col.b * by) + (p3->col.b * bz);
                 p.col.a = 1; //no transparency support yet so alpha is hardcoded to 1
 
-                p.uv.x = (p1->uv.x * bx) + (p2->uv.x * by) + (p3->uv.x * bz);
-                p.uv.y = (p1->uv.y * bx) + (p2->uv.y * by) + (p3->uv.y * bz);
+#ifdef SR_AFFINE_MAPPING
+                p.uv.x = ((p1->uv.x) * bx) + ((p2->uv.x) * by) + ((p3->uv.x) * bz);
+                p.uv.y = ((p1->uv.y) * bx) + ((p2->uv.y) * by) + ((p3->uv.y) * bz);
+#else
+                float ui = ((p1->uv.x / p1->pos.w) * bx) + ((p2->uv.x / p2->pos.w) * by) + ((p3->uv.x / p3->pos.w) * bz);
+                float vi = ((p1->uv.y / p1->pos.w) * bx) + ((p2->uv.y / p2->pos.w) * by) + ((p3->uv.y / p3->pos.w) * bz);
+                float zi = ((1 / p1->pos.w) * bx) + ((1 / p2->pos.w) * by) + ((1 / p3->pos.w) * bz);
 
+                p.uv.x = ui / zi;
+                p.uv.y = vi / zi;
+#endif
                 //scale UV by depth for accurate shading
-                //p.uv.x /= p.pos.z;
-                //p.uv.y /= p.pos.z;
+                //p.uv.x /= -p.pos.w;
+                //p.uv.y /= -p.pos.w;
 
                 //pixel should be on screen by this point
                 SR_DrawPixelUnckecked(pipeline, i,j, pipeline->mPixelFunc(&p, pipeline->mTextures));
