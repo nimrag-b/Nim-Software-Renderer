@@ -49,9 +49,7 @@ typedef enum SR_ERROR{
 typedef struct SR_Pipeline SR_Pipeline;
 
 typedef struct SR_Texture{
-    SR_COLOURFORMAT format;
-    void* pixels;
-    int fmtLength;
+    col4* pixels; //stored as RGBA for fastest process time, since we cant afford the speed to switch between tex formats at runtime
     int w;
     int h;
 } SR_Texture;

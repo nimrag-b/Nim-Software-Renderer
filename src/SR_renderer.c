@@ -53,14 +53,14 @@ typedef struct {
 
 typedef struct {
     float4 pos; //position
-    fcol4 col; //colour 
+    col4 col; //colour rgba
     float2 uv; //UV coords
 } SR_Point;
 
 typedef struct SR_Pipeline{
     //pipeline funcs
     float4 (*mVertexFunc)(mat4x4* modelview, mat4x4* persp, float x, float y, float z);
-    fcol4 (*mPixelFunc)(SR_Point* pixel, SR_Texture** textures);
+    col4 (*mPixelFunc)(SR_Point* pixel, SR_Texture** textures);
     void (*mRasterizeFunc)(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Point* p3);
 
     //state objects
@@ -101,7 +101,7 @@ void _SR_FreeDepthBuf(SR_Pipeline* pipeline){
 //State Management
 
 float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, float x, float y, float z);
-fcol4 SR_DefaultPixelFunc(SR_Point* p, SR_Texture** textures);
+col4 SR_DefaultPixelFunc(SR_Point* p, SR_Texture** textures);
 void SR_RasterizeTris(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Point* p3);
 void SR_RasterizeLines(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Point* p3);
 
@@ -151,15 +151,56 @@ SR_Texture* SR_CreateTexture(void* data, int w, int h, SR_COLOURFORMAT fmt){
     if (texture == NULL) return NULL;
     texture->w = w;
     texture->h = h;
-    texture->format = fmt;
-    texture->fmtLength = SR_ColFormatLength(fmt);
 
-    texture->pixels = malloc(texture->w * texture->h * texture->fmtLength);
+    int fmtLength = SR_ColFormatLength(fmt);
+
+    texture->pixels = malloc(texture->w * texture->h * sizeof(col4));
     if (texture->pixels == NULL) {
         free(texture);
         return NULL;
     }
-    memcpy(texture->pixels, data, texture->w * texture->h * texture->fmtLength);
+    switch (fmt)
+    {
+        case SR_COLOUR_RGBA32:
+            memcpy(texture->pixels, data, texture->w * texture->h * sizeof(col4));
+            break;
+        case SR_COLOUR_RGB24:
+            for (size_t j = 0; j < h; j++)
+            {
+                for (size_t i = 0; i < w; i++)
+                {
+                    char* ptr = (char*)data + ((i + (j * w)) * 3);
+                    col4 c;
+                    c.r = ptr[0];
+                    c.g = ptr[1];
+                    c.b = ptr[2];
+                    c.a = 255;
+                    texture->pixels[i + (j * w)] = c;
+                }
+            }
+            break;
+        case SR_COLOUR_BGRA32:
+            for (size_t j = 0; j < h; j++)
+            {
+                for (size_t i = 0; i < w; i++)
+                {
+                    char* ptr = (char*)data + ((i + (j * w)) * 4);
+                    col4 c;
+                    c.b = ptr[0];
+                    c.g = ptr[1];
+                    c.r = ptr[2];
+                    c.a = ptr[3];
+                    texture->pixels[i + (j * w)] = c;
+                }
+            }
+            break;
+    default:
+        free(texture->pixels);
+        free(texture);
+        return NULL;
+        break;
+    }
+    
     return texture;
 }
 
@@ -271,6 +312,23 @@ void SR_Persp(SR_Pipeline* pipeline, float near, float far, float left, float ri
 
 //Drawing Functions
 
+col4 SR_RGBAToDestPixelColour(SR_COLOURFORMAT fmt, col4 v) {
+    switch (fmt)
+    {
+    case SR_COLOUR_RGBA32:
+        return v;
+
+    case SR_COLOUR_RGB24:
+        return (col4) { v.r, v.g, v.b, 255 };
+
+    case SR_COLOUR_BGRA32:
+        return (col4) { v.b, v.g, v.r, v.a };
+
+    default:
+        printf("err format %d\n", fmt);
+        return (col4) { 0, 0, 0, 255 }; //if err, return black;
+    }
+}
 
 col4 SR_TransformToPixelColour(SR_COLOURFORMAT fmt, fcol4 v){
 
@@ -333,8 +391,9 @@ void SR_ClearDepthBuffer(SR_Pipeline* pipeline){
     //printf("clrdpth = %f\n", pipeline->mDepthBuffer[0]);
 }
 
-fcol4 fmul(fcol4 a, fcol4 b){
-    return (fcol4){a.r * b.r, a.g * b.g, a.b * b.b, a.a * b.a};
+col4 colcomb(col4 a, col4 b){
+
+    return (col4){(a.r * b.r)/255, (a.g * b.g)/255, (a.b * b.b)/255, (a.a * b.a)/255};
 }
 
 float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, float x, float y, float z){
@@ -343,11 +402,11 @@ float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, float x, float y, 
     return p;
 }
 
-fcol4 SR_Sample(SR_Texture* texture, float x, float y);
+col4 SR_Sample(SR_Texture* texture, float x, float y);
 
-fcol4 SR_DefaultPixelFunc(SR_Point* p, SR_Texture** textures){
+col4 SR_DefaultPixelFunc(SR_Point* p, SR_Texture** textures){
     if(textures[0]){
-        return fmul(p->col, SR_Sample(textures[0],p->uv.x,p->uv.y));
+        return colcomb(p->col, SR_Sample(textures[0],p->uv.x,p->uv.y));
     }
     return p->col;
 }
@@ -376,57 +435,30 @@ struct char4 {
     char a, b, c, d;
 };
 
-fcol4 SR_Sample(SR_Texture* texture, float x, float y){
+col4 SR_Sample(SR_Texture* texture, float x, float y){
 
-
-    int len = texture->fmtLength;
     int i = x * texture->w;
     int j = y * texture->h;
-    //if(i < 0) i += texture->w;
-    //if(j < 0) j += texture->h;
 
-
-    //i *= len;
-    //j *= len;
-    char* ptr = (char*)texture->pixels + ((i + (j * texture->w)) * len);
-
-
-    col4 v = {255,255,255,255};
-
-    memcpy(&v,ptr,len);
-
-    return SR_TransformToFloatColour(texture->format,v);
+    return texture->pixels[i + (j * texture->w)];
 }
 
 
-void SR_DrawPixelUnckecked(SR_Pipeline* pipeline, int x, int y, fcol4 col){
+void SR_DrawPixelUnchecked(SR_Pipeline* pipeline, int x, int y, col4 col){
     //transform and copy
-    pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_TransformToPixelColour(pipeline->mDest.fmt, col);
+    pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_RGBAToDestPixelColour(pipeline->mDest.fmt, col);
 }
 
-void SR_DrawPixel(SR_Pipeline* pipeline, int x, int y, fcol4 col){
+void SR_DrawPixel(SR_Pipeline* pipeline, int x, int y, col4 col){
     if(!pipeline->mDest.px){
         return;
     }
     if (x >= 0 && x < pipeline->mScrWidth && y >= 0 && y < pipeline->mScrHeight){
 
-        SR_DrawPixelUnckecked(pipeline, x, y, col);
+        SR_DrawPixelUnchecked(pipeline, x, y, col);
     }
 }
 
-void SR_DrawPoint(SR_Pipeline* pipeline, int x, int y, SR_Point* p){
-    if(!pipeline->mDest.px){
-        return;
-    }
-    if (x >= 0 && x < pipeline->mScrWidth && y >= 0 && y < pipeline->mScrHeight){
-
-        
-        //transform and copy
-        pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_TransformToPixelColour(pipeline->mDest.fmt, pipeline->mPixelFunc(p, pipeline->mTextures));
-
-
-    }
-}
 
 
 void SR_RasterizeTris(
@@ -521,7 +553,7 @@ void SR_RasterizeTris(
                 p.col.r = (p1->col.r * bx) + (p2->col.r * by) + (p3->col.r * bz);
                 p.col.g = (p1->col.g * bx) + (p2->col.g * by) + (p3->col.g * bz);
                 p.col.b = (p1->col.b * bx) + (p2->col.b * by) + (p3->col.b * bz);
-                p.col.a = 1; //no transparency support yet so alpha is hardcoded to 1
+                p.col.a = 255; //no transparency support yet so alpha is hardcoded to 1
 
 #ifdef SR_AFFINE_MAPPING
                 p.uv.x = ((p1->uv.x) * bx) + ((p2->uv.x) * by) + ((p3->uv.x) * bz);
@@ -539,7 +571,7 @@ void SR_RasterizeTris(
                 //p.uv.y /= -p.pos.w;
 
                 //pixel should be on screen by this point
-                SR_DrawPixelUnckecked(pipeline, i,j, pipeline->mPixelFunc(&p, pipeline->mTextures));
+                SR_DrawPixelUnchecked(pipeline, i,j, pipeline->mPixelFunc(&p, pipeline->mTextures));
             }
         }
     }
@@ -561,7 +593,7 @@ static void line_low(SR_Pipeline* pipeline, int x1, int y1, int x2, int y2){
     for (int x = x1; x < x2; ++x)
     {
 
-        SR_DrawPixel(pipeline,x, y,(fcol4){0,0,0,1});
+        SR_DrawPixel(pipeline,x, y,(col4){0,0,0,255});
         if(D > 0){
             y += yi;
             D = D + (2 * (dy - dx));
@@ -587,7 +619,7 @@ static void line_high(SR_Pipeline* pipeline, int x1, int y1, int x2, int y2){
     for (int y = y1; y < y2; ++y)
     {
 
-        SR_DrawPixel(pipeline,x, y,(fcol4){0,0,0,1});
+        SR_DrawPixel(pipeline,x, y,(col4){0,0,0,255});
         if(D > 0){
             x += xi;
             D = D + (2 * (dx - dy));
@@ -673,14 +705,19 @@ void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsign
             {
             case SR_COLOUR_EMPTY:
                 //no colour
-                p[v].col = (fcol4){1,1,1,1};
+                p[v].col = (col4){255,255,255,255};
                 break;
             case SR_COLOUR_RGB24:
-                memcpy(&p[v].col, f + layout.mColStart, 3 * sizeof(float));
-                p[v].col.a = 1;
+                p[v].col.r = f[layout.mColStart] * 255;
+                p[v].col.g = f[layout.mColStart + 1] * 255;
+                p[v].col.b = f[layout.mColStart + 2] * 255;
+                p[v].col.a = 255;
                 break;
             case SR_COLOUR_RGBA32:
-                memcpy(&p[v].col, f + layout.mColStart, 4 * sizeof(float));
+                p[v].col.r = f[layout.mColStart] * 255;
+                p[v].col.g = f[layout.mColStart + 1] * 255;
+                p[v].col.b = f[layout.mColStart + 2] * 255;
+                p[v].col.a = f[layout.mColStart + 3] * 255;
                 break;
             default:
                 break;
