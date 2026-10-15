@@ -7,7 +7,7 @@ A simple software renderer written in C. It is capable of rendering to anything 
 - Complete platform independance
 - Full 3D capable renderer
 - Support for per-vertex colours
-- Support for texture mapping
+- Support for texture mapping (EXPERIMENTAL!!!)
 - Minimal memory footprint
 - No dependancies
 

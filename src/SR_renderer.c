@@ -40,8 +40,13 @@ typedef struct {
 
     int mPosStart; //start of the position (3 bytes)
 
+    int mTexcoordStart;
+
     SR_COLOURFORMAT mColFmt; //colour format
     int mColStart; //start of the colour format(specifeid by mColFmt)
+
+    char mHasColour;
+    char mHasTexCoord;
 } SR_VertexLayout;
 
 typedef struct {
@@ -140,16 +145,24 @@ void SR_DestroyPipeline(SR_Pipeline* pipeline){
 
 
 SR_Texture* SR_CreateTexture(void* data, int w, int h, SR_COLOURFORMAT fmt){
-    SR_Texture* tex = malloc(sizeof(SR_Texture));
-    tex->pixels = data;
-    tex->w = w;
-    tex->h = h;
-    tex->format = fmt;
-    tex->fmtLength = SR_ColFormatLength(fmt);
-    return tex;
+    SR_Texture* texture = malloc(sizeof(SR_Texture));
+    if (texture == NULL) return NULL;
+    texture->w = w;
+    texture->h = h;
+    texture->format = fmt;
+    texture->fmtLength = SR_ColFormatLength(fmt);
+
+    texture->pixels = malloc(texture->w * texture->h * texture->fmtLength);
+    if (texture->pixels == NULL) {
+        free(texture);
+        return NULL;
+    }
+    memcpy(texture->pixels, data, texture->w * texture->h * texture->fmtLength);
+    return texture;
 }
 
 void SR_DestroyTexture(SR_Texture* texture){
+    free(texture->pixels);
     free(texture);
 }
 
@@ -188,6 +201,8 @@ SR_ERROR SR_BindLayout(SR_Pipeline* pipeline, SR_LAYOUT_PROP* props, int count )
 
     // TODO: Validate that we haved passed a broken layout prop to the function (ie more than one position etc)
 
+    memset(&pipeline->mVertexLayout, 0, sizeof(pipeline->mVertexLayout));
+
     int b_offset = 0;
     //copy props over
     for (int i = 0; i < count; ++i)
@@ -199,10 +214,16 @@ SR_ERROR SR_BindLayout(SR_Pipeline* pipeline, SR_LAYOUT_PROP* props, int count )
             b_offset += 3;
             break;
         case SR_LAYOUT_COLOUR_RGB_F:
+            pipeline->mVertexLayout.mHasColour = 1;
             pipeline->mVertexLayout.mColFmt = SR_COLOUR_RGB24;
             pipeline->mVertexLayout.mColStart = b_offset;
             b_offset += 3;
             break;  
+        case SR_LAYOUT_TEXCOORD_UV_F:
+            pipeline->mVertexLayout.mHasTexCoord = 1;
+            pipeline->mVertexLayout.mTexcoordStart = b_offset;
+            b_offset += 2;
+            break;
         default:
             break;
         }
@@ -255,6 +276,9 @@ col4 SR_TransformToPixelColour(SR_COLOURFORMAT fmt, fcol4 v){
     {
     case SR_COLOUR_RGBA32:
         return (col4) {CLAMP(v.r,0,1) * 255,CLAMP(v.g,0,1) * 255,  CLAMP(v.b,0,1) * 255, CLAMP(v.a,0,1) * 255};
+
+    case SR_COLOUR_RGB24:
+        return (col4) { CLAMP(v.r, 0, 1) * 255, CLAMP(v.g, 0, 1) * 255, CLAMP(v.b, 0, 1) * 255, 255 };
     
     case SR_COLOUR_BGRA32:
         return (col4) {CLAMP(v.b,0,1) * 255,CLAMP(v.g,0,1) * 255,  CLAMP(v.r,0,1) * 255, CLAMP(v.a,0,1) * 255};
@@ -272,6 +296,9 @@ fcol4 SR_TransformToFloatColour(SR_COLOURFORMAT fmt, col4 v){
     {
     case SR_COLOUR_RGBA32:
         return (fcol4) {v.r / 255.0f,v.g / 255.0f,v.b / 255.0f,v.a / 255.0f};
+
+    case SR_COLOUR_RGB24:
+        return (fcol4) { v.r / 255.0f, v.g / 255.0f, v.b / 255.0f, 1 };
     
     case SR_COLOUR_BGRA32:
         return (fcol4) {v.b / 255.0f,v.g / 255.0f,v.r / 255.0f,v.a / 255.0f};
@@ -314,7 +341,7 @@ float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, float x, float y, 
     return p;
 }
 
-fcol4 SR_Sample(SR_Texture* texture, int x, int y);
+fcol4 SR_Sample(SR_Texture* texture, float x, float y);
 
 fcol4 SR_DefaultPixelFunc(SR_Point* p, SR_Texture** textures){
     if(textures[0]){
@@ -341,20 +368,20 @@ int SR_ColFormatLength(SR_COLOURFORMAT fmt){
 }
 
 
-fcol4 SR_Sample(SR_Texture* texture, int x, int y){
-    int i = x % texture->w;
-    int j = y % texture->w;
-    if(i < 0) i += texture->w;
-    if(j < 0) j += texture->h;
+fcol4 SR_Sample(SR_Texture* texture, float x, float y){
+    int i = x * texture->w;
+    int j = y * texture->h;
+    //if(i < 0) i += texture->w;
+    //if(j < 0) j += texture->h;
 
     int len = texture->fmtLength;
 
-    i *= len;
-    j *= len;
+    //i *= len;
+    //j *= len;
 
     char* ptr = (char*)texture->pixels;
 
-    col4 v = {0};
+    col4 v = {255,255,255,255};
     memcpy(&v,ptr + ((i + (j * texture->w)) * len),len);
 
     return SR_TransformToFloatColour(texture->format,v);
@@ -483,6 +510,9 @@ void SR_RasterizeTris(
                 p.col.g = (p1->col.g * bx) + (p2->col.g * by) + (p3->col.g * bz);
                 p.col.b = (p1->col.b * bx) + (p2->col.b * by) + (p3->col.b * bz);
                 p.col.a = 1; //no transparency support yet so alpha is hardcoded to 1
+
+                p.uv.x = (p1->uv.x * bx) + (p2->uv.x * by) + (p3->uv.x * bz);
+                p.uv.y = (p1->uv.y * bx) + (p2->uv.y * by) + (p3->uv.y * bz);
 
                 //pixel should be on screen by this point
                 SR_DrawPixelUnckecked(pipeline, i,j, pipeline->mPixelFunc(&p, pipeline->mTextures));
@@ -641,6 +671,12 @@ void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsign
 #endif
             p[v].pos.x = ox;
             p[v].pos.y = oy;
+
+            if (layout.mHasTexCoord) {
+                p[v].uv.x = f[layout.mTexcoordStart];
+                p[v].uv.y = f[layout.mTexcoordStart + 1];
+            }
+
         }
 
 

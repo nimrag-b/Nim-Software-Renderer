@@ -10,7 +10,7 @@ typedef struct{
 } fcol4;
 
 typedef struct{
-    char r, g, b, a;
+    unsigned char r, g, b, a;
 } col4;
 
 typedef struct{
