@@ -2,6 +2,15 @@
 
 A simple software renderer written in C. It is capable of rendering to anything that can provide a pointer to a pixel array, and requires no external libraries other than the C stdlib.
 
+## Features
+
+- Complete platform independance
+- Full 3D capable renderer
+- Support for per-vertex colours
+- Support for texture mapping
+- Minimal memory footprint
+- No dependancies
+
 ## Images
 
 ![a cube](srcube.jpg) ![a monkey](srmonkey.jpg)
