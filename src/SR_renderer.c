@@ -85,11 +85,11 @@ typedef struct SR_Pipeline{
 
 //internal funcs
 
-void _SR_AllocDepthBuf(SR_Pipeline* pipeline){
+void _SR_AllocDepthBuf(SR_Pipeline* pipeline, int w, int h){
     if(pipeline->mDepthBuffer){
         free(pipeline->mDepthBuffer);
     }
-    pipeline->mDepthBuffer = (float*)malloc(pipeline->mScrWidth * pipeline->mScrHeight * sizeof(float));
+    pipeline->mDepthBuffer = (float*)malloc(w * h * sizeof(float));
 }
 void _SR_FreeDepthBuf(SR_Pipeline* pipeline){
     if(pipeline->mDepthBuffer){
@@ -216,7 +216,7 @@ void SR_ToggleDepthTest(SR_Pipeline* pipeline, int enabled){
     pipeline->mDepthTest = !!(enabled);
 
     if(enabled){
-        _SR_AllocDepthBuf(pipeline);
+        _SR_AllocDepthBuf(pipeline, pipeline->mScrWidth, pipeline->mScrHeight);
     }
     else{
         _SR_FreeDepthBuf(pipeline);
@@ -229,14 +229,20 @@ void SR_SetCullMode(SR_Pipeline* pipeline, enum SR_CULLMODE mode){
 }
 
 SR_ERROR SR_UpdateRenderTarget(SR_Pipeline* pipeline, void* target, int w, int h, SR_COLOURFORMAT format){
+
+    if (pipeline->mDepthTest) {
+        //dont recreate depth buffer if the screen size is the same
+        if (w != pipeline->mScrWidth || h != pipeline->mScrHeight) {
+            _SR_AllocDepthBuf(pipeline,w,h);
+        }
+    }
+
     pipeline->mDest.px = (col4*)target;
     pipeline->mDest.fmt = format;
     pipeline->mScrWidth = w;
     pipeline->mScrHeight = h;
 
-    if(pipeline->mDepthTest){
-        _SR_AllocDepthBuf(pipeline);
-    }
+
     return SR_ERR_NONE;
 }
 
@@ -392,8 +398,8 @@ void SR_ClearDepthBuffer(SR_Pipeline* pipeline){
 }
 
 col4 colcomb(col4 a, col4 b){
-
-    return (col4){(a.r * b.r)/255, (a.g * b.g)/255, (a.b * b.b)/255, (a.a * b.a)/255};
+    //use bitshifting to efficiently move into range
+    return (col4){(a.r * b.r) >> 8, (a.g * b.g) >> 8, (a.b * b.b) >> 8, (a.a * b.a) >> 8};
 }
 
 float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, float x, float y, float z){
@@ -437,8 +443,8 @@ struct char4 {
 
 col4 SR_Sample(SR_Texture* texture, float x, float y){
 
-    int i = x * texture->w;
-    int j = y * texture->h;
+    int i = CLAMP(x,0,1) * texture->w;
+    int j = CLAMP(y,0,1) * texture->h;
 
     return texture->pixels[i + (j * texture->w)];
 }
