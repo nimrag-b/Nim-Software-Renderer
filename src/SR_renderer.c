@@ -53,13 +53,13 @@ typedef struct {
 typedef struct SR_Pipeline{
     //pipeline funcs
     float4 (*mVertexFunc)(mat4x4* modelview, mat4x4* persp, float x, float y, float z);
-    fcol4 (*mPixelFunc)(SR_Point* pixel);
+    fcol4 (*mPixelFunc)(SR_Point* pixel, SR_Texture** textures);
     void (*mRasterizeFunc)(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Point* p3);
 
     //state objects
     SR_DestBuf mDest;
     SR_VertexLayout mVertexLayout;
-    
+    SR_Texture* mTextures[SR_MAX_TEXTURES];
 
     mat4x4 mPersp;
     mat4x4 mModelView;
@@ -73,6 +73,8 @@ typedef struct SR_Pipeline{
     float *mDepthBuffer;
     
 } SR_Pipeline;
+
+
 
 //internal funcs
 
@@ -92,9 +94,11 @@ void _SR_FreeDepthBuf(SR_Pipeline* pipeline){
 //State Management
 
 float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, float x, float y, float z);
-fcol4 SR_DefaultPixelFunc(SR_Point* p);
+fcol4 SR_DefaultPixelFunc(SR_Point* p, SR_Texture** textures);
 void SR_RasterizeTris(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Point* p3);
 void SR_RasterizeLines(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Point* p3);
+
+int SR_ColFormatLength(SR_COLOURFORMAT fmt);
 
 
 SR_Pipeline* SR_CreatePipeline(void* initalTarget, int w, int h, SR_COLOURFORMAT format){
@@ -114,6 +118,8 @@ SR_Pipeline* SR_CreatePipeline(void* initalTarget, int w, int h, SR_COLOURFORMAT
     pipeline->mModelView = mat4identity();
     pipeline->mPersp = mat4identity();
 
+    memset(pipeline->mTextures,0,sizeof(pipeline->mTextures));
+
     pipeline->mCullmode = SR_CULL_NONE;
     pipeline->mDepthTest = 0;
 
@@ -130,6 +136,21 @@ void SR_DestroyPipeline(SR_Pipeline* pipeline){
     }
 
     free(pipeline);
+}
+
+
+SR_Texture* SR_CreateTexture(void* data, int w, int h, SR_COLOURFORMAT fmt){
+    SR_Texture* tex = malloc(sizeof(SR_Texture));
+    tex->pixels = data;
+    tex->w = w;
+    tex->h = h;
+    tex->format = fmt;
+    tex->fmtLength = SR_ColFormatLength(fmt);
+    return tex;
+}
+
+void SR_DestroyTexture(SR_Texture* texture){
+    free(texture);
 }
 
 //Binding Functions
@@ -195,6 +216,14 @@ void SR_BindModelview(SR_Pipeline* pipeline, mat4x4* matrix){
     pipeline->mModelView = *matrix;
 }
 
+SR_ERROR SR_BindTexture(SR_Pipeline* pipeline, SR_Texture* texture, int slot){
+    if(slot >= SR_MAX_TEXTURES){
+        return SR_ERR_TOO_LONG;
+    }
+    pipeline->mTextures[slot] = texture;
+    return SR_ERR_NONE;
+}
+
 
 void SR_PerspFOV(SR_Pipeline* pipeline, float near, float far, float aspect, float FOV){
     float e = 1.0f / tanf((FOV * (SR_PI / 180.0f))/2.0f); 
@@ -237,6 +266,22 @@ col4 SR_TransformToPixelColour(SR_COLOURFORMAT fmt, fcol4 v){
 
 }
 
+fcol4 SR_TransformToFloatColour(SR_COLOURFORMAT fmt, col4 v){
+
+    switch (fmt)
+    {
+    case SR_COLOUR_RGBA32:
+        return (fcol4) {v.r / 255.0f,v.g / 255.0f,v.b / 255.0f,v.a / 255.0f};
+    
+    case SR_COLOUR_BGRA32:
+        return (fcol4) {v.b / 255.0f,v.g / 255.0f,v.r / 255.0f,v.a / 255.0f};
+    default:
+        printf("err format %d\n",fmt);
+        return (fcol4){0,0,0,1}; //if err, return black;
+    }
+
+}
+
 
 void SR_Clear(SR_Pipeline* pipeline, fcol4 c){
 
@@ -259,7 +304,9 @@ void SR_ClearDepthBuffer(SR_Pipeline* pipeline){
     //printf("clrdpth = %f\n", pipeline->mDepthBuffer[0]);
 }
 
-
+fcol4 fmul(fcol4 a, fcol4 b){
+    return (fcol4){a.r * b.r, a.g * b.g, a.b * b.b, a.a * b.a};
+}
 
 float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, float x, float y, float z){
     float4 p = mat4mul(modelview, (float4){x,y,z,1.0f});
@@ -267,9 +314,52 @@ float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, float x, float y, 
     return p;
 }
 
-fcol4 SR_DefaultPixelFunc(SR_Point* p){
+fcol4 SR_Sample(SR_Texture* texture, int x, int y);
+
+fcol4 SR_DefaultPixelFunc(SR_Point* p, SR_Texture** textures){
+    if(textures[0]){
+        return fmul(p->col, SR_Sample(textures[0],p->uv.x,p->uv.y));
+    }
     return p->col;
 }
+
+int SR_ColFormatLength(SR_COLOURFORMAT fmt){
+    switch (fmt)
+    {
+    case SR_COLOUR_BGRA32:
+    case SR_COLOUR_RGBA32:
+        return 4;
+    
+    case SR_COLOUR_RGB24:
+        return 3;
+       
+    
+    case SR_COLOUR_EMPTY:
+    default:
+        return 0;
+    }
+}
+
+
+fcol4 SR_Sample(SR_Texture* texture, int x, int y){
+    int i = x % texture->w;
+    int j = y % texture->w;
+    if(i < 0) i += texture->w;
+    if(j < 0) j += texture->h;
+
+    int len = texture->fmtLength;
+
+    i *= len;
+    j *= len;
+
+    char* ptr = (char*)texture->pixels;
+
+    col4 v = {0};
+    memcpy(&v,ptr + ((i + (j * texture->w)) * len),len);
+
+    return SR_TransformToFloatColour(texture->format,v);
+}
+
 
 void SR_DrawPixelUnckecked(SR_Pipeline* pipeline, int x, int y, fcol4 col){
     //transform and copy
@@ -294,7 +384,7 @@ void SR_DrawPoint(SR_Pipeline* pipeline, int x, int y, SR_Point* p){
 
         
         //transform and copy
-        pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_TransformToPixelColour(pipeline->mDest.fmt, pipeline->mPixelFunc(p));
+        pipeline->mDest.px[x + (y * pipeline->mScrWidth)] = SR_TransformToPixelColour(pipeline->mDest.fmt, pipeline->mPixelFunc(p, pipeline->mTextures));
 
 
     }
@@ -395,7 +485,7 @@ void SR_RasterizeTris(
                 p.col.a = 1; //no transparency support yet so alpha is hardcoded to 1
 
                 //pixel should be on screen by this point
-                SR_DrawPixelUnckecked(pipeline, i,j, pipeline->mPixelFunc(&p));
+                SR_DrawPixelUnckecked(pipeline, i,j, pipeline->mPixelFunc(&p, pipeline->mTextures));
             }
         }
     }

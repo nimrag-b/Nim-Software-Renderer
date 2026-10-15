@@ -43,17 +43,34 @@ typedef enum SR_ERROR{
     SR_ERR_TOO_LONG,
 } SR_ERROR;
 
+#define SR_MAX_TEXTURES 16
 
 typedef struct SR_Pipeline SR_Pipeline;
 
+typedef struct SR_Texture{
+    SR_COLOURFORMAT format;
+    void* pixels;
+    int fmtLength;
+    int w;
+    int h;
+} SR_Texture;
+
 SR_Pipeline* SR_CreatePipeline(void* initalTarget, int w, int h, SR_COLOURFORMAT format);
 void SR_DestroyPipeline(SR_Pipeline* pipeline);
+
+SR_Texture* SR_CreateTexture(void* data, int w, int h, SR_COLOURFORMAT fmt);
+void SR_DestroyTexture(SR_Texture* texture);
+
+
 void SR_ToggleDepthTest(SR_Pipeline* pipeline, int enabled);
 void SR_SetCullMode(SR_Pipeline* pipeline, enum SR_CULLMODE mode);
 
 SR_ERROR SR_UpdateRenderTarget(SR_Pipeline* pipeline, void* target, int w, int h, SR_COLOURFORMAT format);
+
 SR_ERROR SR_BindLayout(SR_Pipeline* pipeline, enum SR_LAYOUT_PROP* props, int count);
 void SR_BindModelview(SR_Pipeline* pipeline, mat4x4* matrix);
+SR_ERROR SR_BindTexture(SR_Pipeline* pipeline, SR_Texture* texture, int slot);
+
 void SR_PerspFOV(SR_Pipeline* pipeline, float near, float far, float aspect, float FOV);
 void SR_Persp(SR_Pipeline* pipeline, float near, float far, float left, float right, float top, float bottom);
 
