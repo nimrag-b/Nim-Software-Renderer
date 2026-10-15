@@ -2,6 +2,7 @@
 #define _SR_HEADER_
 
 #include "SR_matrix.h"
+#include "SR_internal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,33 +56,33 @@ typedef struct SR_Texture{
     int h;
 } SR_Texture;
 
-SR_Pipeline* SR_CreatePipeline(void* initalTarget, int w, int h, SR_COLOURFORMAT format);
-void SR_DestroyPipeline(SR_Pipeline* pipeline);
+SR_DLLFUNC SR_Pipeline* SR_CreatePipeline(void* initalTarget, int w, int h, SR_COLOURFORMAT format);
+SR_DLLFUNC void SR_DestroyPipeline(SR_Pipeline* pipeline);
 
-SR_Texture* SR_CreateTexture(void* data, int w, int h, SR_COLOURFORMAT fmt);
-void SR_DestroyTexture(SR_Texture* texture);
-
-
-void SR_ToggleDepthTest(SR_Pipeline* pipeline, int enabled);
-void SR_SetCullMode(SR_Pipeline* pipeline, enum SR_CULLMODE mode);
-
-SR_ERROR SR_UpdateRenderTarget(SR_Pipeline* pipeline, void* target, int w, int h, SR_COLOURFORMAT format);
-
-SR_ERROR SR_BindLayout(SR_Pipeline* pipeline, enum SR_LAYOUT_PROP* props, int count);
-void SR_BindModelview(SR_Pipeline* pipeline, mat4x4* matrix);
-SR_ERROR SR_BindTexture(SR_Pipeline* pipeline, SR_Texture* texture, int slot);
-
-void SR_PerspFOV(SR_Pipeline* pipeline, float near, float far, float aspect, float FOV);
-void SR_Persp(SR_Pipeline* pipeline, float near, float far, float left, float right, float top, float bottom);
-
-void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsigned long long count);
-
-void SR_Clear(SR_Pipeline* pipeline, fcol4 c);
-void SR_ClearDepthBuffer(SR_Pipeline* pipeline);
+SR_DLLFUNC SR_Texture* SR_CreateTexture(void* data, int w, int h, SR_COLOURFORMAT fmt);
+SR_DLLFUNC void SR_DestroyTexture(SR_Texture* texture);
 
 
-long long SR_GetTicks();
-long long SR_TicksPerSecond();
+SR_DLLFUNC void SR_ToggleDepthTest(SR_Pipeline* pipeline, int enabled);
+SR_DLLFUNC void SR_SetCullMode(SR_Pipeline* pipeline, enum SR_CULLMODE mode);
+
+SR_DLLFUNC SR_ERROR SR_UpdateRenderTarget(SR_Pipeline* pipeline, void* target, int w, int h, SR_COLOURFORMAT format);
+
+SR_DLLFUNC SR_ERROR SR_BindLayout(SR_Pipeline* pipeline, enum SR_LAYOUT_PROP* props, int count);
+SR_DLLFUNC void SR_BindModelview(SR_Pipeline* pipeline, mat4x4* matrix);
+SR_DLLFUNC SR_ERROR SR_BindTexture(SR_Pipeline* pipeline, SR_Texture* texture, int slot);
+
+SR_DLLFUNC void SR_PerspFOV(SR_Pipeline* pipeline, float near, float far, float aspect, float FOV);
+SR_DLLFUNC void SR_Persp(SR_Pipeline* pipeline, float near, float far, float left, float right, float top, float bottom);
+
+SR_DLLFUNC void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsigned long long count);
+
+SR_DLLFUNC void SR_Clear(SR_Pipeline* pipeline, fcol4 c);
+SR_DLLFUNC void SR_ClearDepthBuffer(SR_Pipeline* pipeline);
+
+
+SR_DLLFUNC long long SR_GetTicks();
+SR_DLLFUNC long long SR_TicksPerSecond();
 
 
 #ifdef __cplusplus

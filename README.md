@@ -4,11 +4,23 @@ A simple software renderer written in C. It is capable of rendering to anything 
 
 ## Images
 
-![a cube](srcube.jpg)
-![a monkey](srmonkey.jpg)
+![a cube](srcube.jpg) ![a monkey](srmonkey.jpg)
 
 ## Installing
 
+### Visual Studio
+
+If you are using Visual Studio, the quickest way to get this project working is to:
+
+1. Pull this repository
+2. Create a new C++ project in Visual Studio
+3. Right Click on your solution and then on Add->Existing Project
+4. Add the project at VisualC/nimSR/nimSR.vcxproj
+5. Return to Visual Studio and in your new project click References->Add Reference, then select the nimSR project
+6. In your project properties, add the include directory to your Additional Include Directories
+7. Build and Run!
+
+### Standard
 There are two ways to use this project:
 
 1. Direct (Recommended)
@@ -25,6 +37,7 @@ There are two ways to use this project:
 #define __SR_IMPL__
 #include <SR_impl.h>
 ```
+This option is experimental and **will not** be automatically updated with new versions, you will have to run gen_header_only.bat again. This option also does not include any platform helper functions.
 
 ## Quick Start
 

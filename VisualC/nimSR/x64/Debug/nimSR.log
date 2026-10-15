@@ -1,0 +1,40 @@
+﻿  SR_platform_win32.c
+C:\programming\SoftwareRenderer\src\platform\SR_platform_win32.c(49,32): warning C4013: 'malloc' undefined; assuming extern returning int
+C:\programming\SoftwareRenderer\src\platform\SR_platform_win32.c(49,22): warning C4047: 'initializing': 'SR_HWNDAttached *' differs in levels of indirection from 'int'
+C:\programming\SoftwareRenderer\src\platform\SR_platform_win32.c(62,5): warning C4013: 'free' undefined; assuming extern returning int
+  SR_renderer.c
+C:\programming\SoftwareRenderer\src\SR_renderer.c(229,51): warning C4244: 'function': conversion from 'double' to 'float', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(257,39): warning C4244: 'initializing': conversion from 'float' to 'char', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(257,60): warning C4244: 'initializing': conversion from 'float' to 'char', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(257,83): warning C4244: 'initializing': conversion from 'float' to 'char', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(257,105): warning C4244: 'initializing': conversion from 'float' to 'char', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(260,39): warning C4244: 'initializing': conversion from 'float' to 'char', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(260,60): warning C4244: 'initializing': conversion from 'float' to 'char', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(260,83): warning C4244: 'initializing': conversion from 'float' to 'char', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(260,105): warning C4244: 'initializing': conversion from 'float' to 'char', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(321,56): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(321,64): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(400,17): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(401,17): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(402,17): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(403,17): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(436,76): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(573,32): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(573,42): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(573,52): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(573,62): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(574,32): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(574,42): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(574,52): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(574,62): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(575,32): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(575,42): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(575,52): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(575,62): warning C4244: 'function': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(642,26): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(643,26): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(637,63): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+C:\programming\SoftwareRenderer\src\SR_renderer.c(638,63): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+  Generating Code...
+     Creating library C:\programming\SR_SDL_test\x64\Debug\nimSR.lib and object C:\programming\SR_SDL_test\x64\Debug\nimSR.exp
+  nimSR.vcxproj -> C:\programming\SR_SDL_test\x64\Debug\nimSR.dll
