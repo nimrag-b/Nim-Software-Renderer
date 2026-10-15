@@ -490,10 +490,11 @@ void SR_RasterizeTris(
                 SR_Point p;
                 // first calculate the depth and throw this pixel away if its not going to be visible
                 // dont calculate everything first if we dont have to
-                p.pos.w = (p1->pos.w * bx) + (p2->pos.w * by) + (p3->pos.w * bz);
+                p.pos.w = ((p1->pos.w * bx) + (p2->pos.w * by) + (p3->pos.w * bz));
                 
                 //only check for depth if there is a depth buffer bound
                 if(pipeline->mDepthBuffer){
+                    //printf("depth: %f, buffer: %f\n", p.pos.w, pipeline->mDepthBuffer[i + j * pipeline->mScrWidth]);
                     if(p.pos.w > pipeline->mDepthBuffer[i + j*pipeline->mScrWidth]){
                         continue;
                     }
@@ -513,6 +514,10 @@ void SR_RasterizeTris(
 
                 p.uv.x = (p1->uv.x * bx) + (p2->uv.x * by) + (p3->uv.x * bz);
                 p.uv.y = (p1->uv.y * bx) + (p2->uv.y * by) + (p3->uv.y * bz);
+
+                //scale UV by depth for accurate shading
+                //p.uv.x /= p.pos.z;
+                //p.uv.y /= p.pos.z;
 
                 //pixel should be on screen by this point
                 SR_DrawPixelUnckecked(pipeline, i,j, pipeline->mPixelFunc(&p, pipeline->mTextures));
