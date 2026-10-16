@@ -44,15 +44,20 @@ typedef struct {
 
     int mTexcoordStart;
 
+    int mNormalStart;
+
     SR_COLOURFORMAT mColFmt; //colour format
     int mColStart; //start of the colour format(specifeid by mColFmt)
 
+
     char mHasColour;
     char mHasTexCoord;
+    char mHasNormal;
 } SR_VertexLayout;
 
 typedef struct {
     float4 pos; //position
+    float3 normal;
     col4 col; //colour rgba
     float2 uv; //UV coords
 } SR_Point;
@@ -61,7 +66,7 @@ typedef struct SR_Pipeline{
     //pipeline funcs
     float4 (*mVertexFunc)(mat4x4* modelview, mat4x4* persp, float x, float y, float z);
     col4 (*mPixelFunc)(SR_Point* pixel, SR_Texture** textures);
-    void (*mRasterizeFunc)(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Point* p3);
+    void (*mRasterizeFunc)(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Point* p3, float4* s1, float4* s2, float4* s3);
 
     //state objects
     SR_DestBuf mDest;
@@ -262,6 +267,11 @@ SR_ERROR SR_BindLayout(SR_Pipeline* pipeline, SR_LAYOUT_PROP* props, int count )
             pipeline->mVertexLayout.mPosStart = b_offset;
             b_offset += 3;
             break;
+        case SR_LAYOUT_NORMAL_F:
+            pipeline->mVertexLayout.mHasNormal = 1;
+            pipeline->mVertexLayout.mNormalStart = b_offset;
+            b_offset += 3;
+            break;
         case SR_LAYOUT_COLOUR_RGB_F:
             pipeline->mVertexLayout.mHasColour = 1;
             pipeline->mVertexLayout.mColFmt = SR_COLOUR_RGB24;
@@ -402,6 +412,11 @@ col4 colcomb(col4 a, col4 b){
     return (col4){(a.r * b.r) >> 8, (a.g * b.g) >> 8, (a.b * b.b) >> 8, (a.a * b.a) >> 8};
 }
 
+col4 coladd(col4 a, col4 b) {
+    return (col4) { CLAMP(a.r + b.r,0,255), CLAMP(a.g + b.g, 0, 255), CLAMP(a.b + b.b, 0, 255), CLAMP(a.a + b.a, 0, 255)};
+}
+
+
 float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, float x, float y, float z){
     float4 p = mat4mul(modelview, (float4){x,y,z,1.0f});
     p = mat4mul(persp,p);
@@ -410,12 +425,59 @@ float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, float x, float y, 
 
 col4 SR_Sample(SR_Texture* texture, float x, float y);
 
-col4 SR_DefaultPixelFunc(SR_Point* p, SR_Texture** textures){
-    if(textures[0]){
-        return colcomb(p->col, SR_Sample(textures[0],p->uv.x,p->uv.y));
-    }
-    return p->col;
+
+col4 col3to4(col3 col) {
+    return (col4) { col.r, col.g, col.b, 255 };
 }
+
+float float3length(float3 v) {
+    return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+float3 float3normalize(float3 v) {
+    float l = float3length(v);
+    return (float3) { v.x / l, v.y / l, v.z / l };
+}
+
+float float3dot(float3 a, float3 b) {
+    return (a.x * b.x + a.y * b.y + a.z * b.z);
+}
+
+float3 float3add(float3 a, float3 b) {
+    return (float3) { a.x + b.x, a.y + b.y, a.z + b.z };
+}
+
+#define COL4CONV(f4) (col4){CLAMP(f4.r,0,1)*255,CLAMP(f4.g,0,1)*255,CLAMP(f4.b,0,1)*255,CLAMP(f4.a,0,1)*255}
+
+col4 SR_DefaultPixelFunc(SR_Point* p, SR_Texture** textures){
+
+    float diffusePower = 1;
+
+    float3 lightDir = { 0,0,1 };
+
+    //lx = lx - p->pos.x;
+    //ly = ly - p->pos.y;
+    //lz = lz - p->pos.z;
+
+    lightDir = float3normalize(lightDir);
+    //dist *= dist;
+
+    float diff = CLAMP(float3dot(p->normal, lightDir), 0, 1.0);
+
+    col4 color = SR_Sample(textures[0], p->uv.x, p->uv.y);
+    float factor = 0.2f;
+    // ambient
+    col4 ambient = (col4){ factor * color.r, factor * color.g, factor * color.b,255 };
+    // diffuse
+
+    col4 diffuse = (col4){ diff * color.r, diff * color.g,diff * color.b,255 };
+
+
+    return coladd(ambient, diffuse);
+}
+
+
+
 
 int SR_ColFormatLength(SR_COLOURFORMAT fmt){
     switch (fmt)
@@ -469,21 +531,20 @@ void SR_DrawPixel(SR_Pipeline* pipeline, int x, int y, col4 col){
 
 void SR_RasterizeTris(
     SR_Pipeline* pipeline,
-    SR_Point* p1, 
-    SR_Point* p2,  
-    SR_Point* p3){
+    SR_Point* p1, SR_Point* p2, SR_Point* p3,
+    float4* s1, float4* s2, float4* s3){
 
-    int min_x = CLAMP((MIN(MIN(p1->pos.x, p2->pos.x), p3->pos.x)), 0, pipeline->mScrWidth);
-    int max_x = CLAMP((MAX(MAX(p1->pos.x, p2->pos.x), p3->pos.x)), 0, pipeline->mScrWidth);
-    int min_y = CLAMP((MIN(MIN(p1->pos.y, p2->pos.y), p3->pos.y)), 0, pipeline->mScrHeight);
-    int max_y = CLAMP((MAX(MAX(p1->pos.y, p2->pos.y), p3->pos.y)), 0, pipeline->mScrHeight);
+    int min_x = CLAMP((MIN(MIN(s1->x, s2->x), s3->x)), 0, pipeline->mScrWidth);
+    int max_x = CLAMP((MAX(MAX(s1->x, s2->x), s3->x)) + 1, 0, pipeline->mScrWidth);
+    int min_y = CLAMP((MIN(MIN(s1->y, s2->y), s3->y)), 0, pipeline->mScrHeight);
+    int max_y = CLAMP((MAX(MAX(s1->y, s2->y), s3->y)) + 1, 0, pipeline->mScrHeight);
 
     //point offscreen
     if(max_x == 0 || max_y == 0){
         return;
     }
 
-    float f = (p1->pos.x *(p2->pos.y - p3->pos.y)) + (p2->pos.x *(p3->pos.y - p1->pos.y)) + (p3->pos.x *(p1->pos.y - p2->pos.y));
+    float f = (s1->x *(s2->y - s3->y)) + (s2->x *(s3->y - s1->y)) + (s3->x *(s1->y - s2->y));
 
     f = 1/f; //invert
 
@@ -491,17 +552,17 @@ void SR_RasterizeTris(
     float m10, m11, m12;
     float m20, m21, m22;
 
-    m00 = (p2->pos.x*p3->pos.y) - (p3->pos.x*p2->pos.y);
-    m10 = (p3->pos.x*p1->pos.y) - (p1->pos.x*p3->pos.y);
-    m20 = (p1->pos.x*p2->pos.y) - (p2->pos.x*p1->pos.y);
+    m00 = (s2->x*s3->y) - (s3->x*s2->y);
+    m10 = (s3->x*s1->y) - (s1->x*s3->y);
+    m20 = (s1->x*s2->y) - (s2->x*s1->y);
 
-    m01 = p2->pos.y - p3->pos.y;
-    m11 = p3->pos.y - p1->pos.y;
-    m21 = p1->pos.y - p2->pos.y;
+    m01 = s2->y - s3->y;
+    m11 = s3->y - s1->y;
+    m21 = s1->y - s2->y;
     
-    m02 = p3->pos.x - p2->pos.x;
-    m12 = p1->pos.x - p3->pos.x;
-    m22 = p2->pos.x - p1->pos.x;
+    m02 = s3->x - s2->x;
+    m12 = s1->x - s3->x;
+    m22 = s2->x - s1->x;
 
     //(B - A) x (C - A)
     //calculate the z property of the cross product to get the winding of the triangle
@@ -509,7 +570,7 @@ void SR_RasterizeTris(
     
 
     if(pipeline->mCullmode != 0){ //cullmode of zero means dont cull
-        int winding = (-(p2->pos.y - p1->pos.y) * (p3->pos.x - p1->pos.x)) + ((p2->pos.x - p1->pos.x) * (p3->pos.y - p1->pos.y));
+        int winding = (-(s2->y - s1->y) * (s3->x - s1->x)) + ((s2->x - s1->x) * (s3->y - s1->y));
 
         printf("Winding = %d\n",winding);
         //do some bitwise trickery to determine wether to cull or not
@@ -526,8 +587,8 @@ void SR_RasterizeTris(
     {
         for (int i = min_x; i < max_x; i++)
         {
-            float fi = i + 0.5f;
-            float fj = j + 0.5f;
+            float fi = i;// +0.5f;
+            float fj = j;// +0.5f;
             
             float bx =  ((m00 * 1) + (m01 * fi) + (m02 * fj)) * f;
             float by =  ((m10 * 1) + (m11 * fi) + (m12 * fj)) * f;
@@ -539,22 +600,22 @@ void SR_RasterizeTris(
                 SR_Point p;
                 // first calculate the depth and throw this pixel away if its not going to be visible
                 // dont calculate everything first if we dont have to
-                p.pos.w = ((p1->pos.w * bx) + (p2->pos.w * by) + (p3->pos.w * bz));
                 
+                float d = (s1->w * bx) + (s2->w * by) + (s3->w * bz);
                 //only check for depth if there is a depth buffer bound
                 if(pipeline->mDepthBuffer){
                     //printf("depth: %f, buffer: %f\n", p.pos.w, pipeline->mDepthBuffer[i + j * pipeline->mScrWidth]);
-                    if(p.pos.w > pipeline->mDepthBuffer[i + j*pipeline->mScrWidth]){
+                    if(d > pipeline->mDepthBuffer[i + j*pipeline->mScrWidth]){
                         continue;
                     }
-                    pipeline->mDepthBuffer[i + j*pipeline->mScrWidth] = p.pos.w;
+                    pipeline->mDepthBuffer[i + j*pipeline->mScrWidth] = d;
                 }
 
                 //this pixel is going to be rendered, calculate eveything else
                 p.pos.x = (p1->pos.x * bx) + (p2->pos.x * by) + (p3->pos.x * bz);
                 p.pos.y = (p1->pos.y * bx) + (p2->pos.y * by) + (p3->pos.y * bz);
                 p.pos.z = (p1->pos.z * bx) + (p2->pos.z * by) + (p3->pos.z * bz);
-
+                p.pos.w = d; //for now, store the depth in w in case we need it
 
                 p.col.r = (p1->col.r * bx) + (p2->col.r * by) + (p3->col.r * bz);
                 p.col.g = (p1->col.g * bx) + (p2->col.g * by) + (p3->col.g * bz);
@@ -565,9 +626,9 @@ void SR_RasterizeTris(
                 p.uv.x = ((p1->uv.x) * bx) + ((p2->uv.x) * by) + ((p3->uv.x) * bz);
                 p.uv.y = ((p1->uv.y) * bx) + ((p2->uv.y) * by) + ((p3->uv.y) * bz);
 #else
-                float ui = ((p1->uv.x / p1->pos.w) * bx) + ((p2->uv.x / p2->pos.w) * by) + ((p3->uv.x / p3->pos.w) * bz);
-                float vi = ((p1->uv.y / p1->pos.w) * bx) + ((p2->uv.y / p2->pos.w) * by) + ((p3->uv.y / p3->pos.w) * bz);
-                float zi = ((1 / p1->pos.w) * bx) + ((1 / p2->pos.w) * by) + ((1 / p3->pos.w) * bz);
+                float ui = ((p1->uv.x / s1->w) * bx) + ((p2->uv.x / s2->w) * by) + ((p3->uv.x / s3->w) * bz);
+                float vi = ((p1->uv.y / s1->w) * bx) + ((p2->uv.y / s2->w) * by) + ((p3->uv.y / s3->w) * bz);
+                float zi = ((1 / s1->w) * bx) + ((1 / s2->w) * by) + ((1 / s3->w) * bz);
 
                 p.uv.x = ui / zi;
                 p.uv.y = vi / zi;
@@ -575,6 +636,10 @@ void SR_RasterizeTris(
                 //scale UV by depth for accurate shading
                 //p.uv.x /= -p.pos.w;
                 //p.uv.y /= -p.pos.w;
+
+                p.normal.x = (p1->normal.x * bx) + (p2->normal.x * by) + (p3->normal.x * bz);
+                p.normal.y = (p1->normal.y * bx) + (p2->normal.y * by) + (p3->normal.y * bz);
+                p.normal.z = (p1->normal.z * bx) + (p2->normal.z * by) + (p3->normal.z * bz);
 
                 //pixel should be on screen by this point
                 SR_DrawPixelUnchecked(pipeline, i,j, pipeline->mPixelFunc(&p, pipeline->mTextures));
@@ -695,6 +760,7 @@ void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsign
     {
         
         SR_Point p[3] = {0};
+        float4 scr_pos[3] = {0};
 
         int ind[3];
         ind[0] = (indices[i+0] * layout.mStride);
@@ -728,20 +794,31 @@ void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsign
             default:
                 break;
             }
-            
-            p[v].pos = pipeline->mVertexFunc(modelview, persp, f[layout.mPosStart],f[layout.mPosStart + 1],f[layout.mPosStart + 2]);
 
-            int ox = COORD_NORMALISE(p[v].pos.x / p[v].pos.z) * pipeline->mScrWidth;
-            int oy = COORD_NORMALISE(p[v].pos.y / p[v].pos.z) * pipeline->mScrHeight;
+            p[v].pos.x = f[layout.mPosStart];
+            p[v].pos.y = f[layout.mPosStart + 1];
+            p[v].pos.z = f[layout.mPosStart + 2];
+
+            
+            scr_pos[v] = pipeline->mVertexFunc(modelview, persp, p[v].pos.x, p[v].pos.y, p[v].pos.z);
+
+            float ox = COORD_NORMALISE(scr_pos[v].x / scr_pos[v].z) * pipeline->mScrWidth;
+            float oy = COORD_NORMALISE(scr_pos[v].y / scr_pos[v].z) * pipeline->mScrHeight;
 #ifdef LOG_DRAW
             printf("[%d] -> (%.1f,%.1f,%.1f,%.1f) -> (%.1f,%.1f,%.1f,%.1f) -> (%d,%d)\n",ind[v], f[layout.mPosStart],f[layout.mPosStart + 1],f[layout.mPosStart + 1],1.0f,p[v].pos.x,p[v].pos.y,p[v].pos.z,p[v].pos.w, ox,oy);
 #endif
-            p[v].pos.x = ox;
-            p[v].pos.y = oy;
+            scr_pos[v].x = ox;
+            scr_pos[v].y = oy;
 
             if (layout.mHasTexCoord) {
                 p[v].uv.x = f[layout.mTexcoordStart];
                 p[v].uv.y = f[layout.mTexcoordStart + 1];
+            }
+
+            if (layout.mHasNormal) {
+                p[v].normal.x = f[layout.mNormalStart];
+                p[v].normal.y = f[layout.mNormalStart + 1];
+                p[v].normal.z = f[layout.mNormalStart + 2];
             }
 
         }
@@ -749,7 +826,7 @@ void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsign
 
         //SR_RasterizeTris(pipeline, &p[0], &p[1], &p[2]);
         //SR_RasterizeLines(pipeline, &p[0], &p[1], &p[2]);
-        pipeline->mRasterizeFunc(pipeline, &p[0], &p[1], &p[2]);
+        pipeline->mRasterizeFunc(pipeline, &p[0], &p[1], &p[2], &scr_pos[0], &scr_pos[1], &scr_pos[2]);
 #ifdef LOG_DRAW
         puts("--ENDTRI--");
 #endif
