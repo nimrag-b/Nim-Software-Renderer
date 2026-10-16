@@ -69,40 +69,37 @@ typedef struct {
 } SR_RenderProps;
 
 
-/** The function signature for a vertex shader function
- *
- * The default function multiplies the pixel position bu the modelview and the persp matrices, and adjusts the normals by the modelview so they can be used in the pixel shader lighting.
- *
- * @param modelview The modelview matrix
- * @param persp The projection matrix
- * @param pixel The worldspace vertex to be transformed
- * 
- * @return The normalised screen space position of the vertex
- * 
- * @see SR_PixelFunc
- * @see SR_BindVertexFunc
-`*/
-typedef float4(*SR_VertexFunc)(mat4x4* modelview, mat4x4* persp, SR_Point* pixel);
+/** 
+* The function signature for a vertex shader function
+* 
+* @param modelview The modelview matrix
+* @param persp The projection matrix
+* @param pixel The worldspace vertex to be transformed
+* 
+* @return The normalised screen space position of the vertex
+* 
+* @see SR_PixelFunc
+* @see SR_BindVertexFunc
+*/
+typedef float4 (*SR_VertexFunc)(mat4x4* modelview, mat4x4* persp, SR_Point* pixel);
 
 
-/** The function signature for a pixel shader function
- * 
- * Most values not specified by the input layout are filled with a default value, however do not rely on that to always be the case.
- * The default function is a simple Phong shader that uses textures[0] as the diffuse.
- * 
- * @param props A collection of properties shared with every pixel
- * @param pixel The position of the vertex
- * @param textures An array of texture slots, bound with a call to SR_BindTexture
- * @return The 4 byte RGBA colour of the pixel
- *
- * @see SR_VertexFunc
- * @see SR_BindPixelFunc
- * @see SR_BindTexture
-`*/
-typedef col4(*SR_PixelFunc)(SR_RenderProps* props, SR_Point* pixel, SR_Texture* textures[SR_MAX_TEXTURES]);
+/** 
+* The function signature for a pixel shader function
+*
+* @param props A collection of properties shared with every pixel
+* @param pixel The position of the vertex
+* @param textures An array of texture slots, bound with a call to SR_BindTexture
+* @return The 4 byte RGBA colour of the pixel
+*
+* @see SR_VertexFunc
+* @see SR_BindPixelFunc
+* @see SR_BindTexture
+*/
+typedef col4 (*SR_PixelFunc)(SR_RenderProps* props, SR_Point* pixel, SR_Texture* textures[SR_MAX_TEXTURES]);
 
 /** Creates a pipeline object 
- *  
+ *
  * @param initialTarget The initial render target to render too. This can be NULL
  * @param w The width of initialTarget in pixels
  * @param h The height of initialTarget in pixels
