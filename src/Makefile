@@ -19,7 +19,7 @@ CFLAGS := -g -O3 -Wall -Wextra -Werror
 
 INCLUDEDIR := ../include
 
-HEADER := SR.h SR_type.h SR_matrix.h SR_platform.h
+HEADER := SR.h SR_type.h SR_matrix.h SR_platform.h SR_internal.h
 SRC := SR_matrix.c SR_renderer.c $(SRC_PLATFORM)
 OBJ := $(patsubst %.c,%.o,$(SRC))
 

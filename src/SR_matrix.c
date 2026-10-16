@@ -124,6 +124,14 @@ float4 mat4mul(mat4x4* mat, float4 v){
     return res;
 }
 
+float3 mat4mul3(mat4x4* mat, float3 v) {
+    float3 res;
+    res.x = (mat->m00 * v.x) + (mat->m01 * v.y) + (mat->m02 * v.z);
+    res.y = (mat->m10 * v.x) + (mat->m11 * v.y) + (mat->m12 * v.z);
+    res.z = (mat->m20 * v.x) + (mat->m21 * v.y) + (mat->m22 * v.z);
+    return res;
+}
+
 
 
 mat4x4 mat4transform(float scaleX, float scaleY, float scaleZ, float transX, float transY, float transZ, float rotX, float rotY, float rotZ){

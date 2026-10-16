@@ -56,6 +56,22 @@ typedef struct SR_Texture{
     int h;
 } SR_Texture;
 
+typedef struct {
+    float4 pos; //position
+    float3 normal; //normal
+    col4 col; //colour rgba
+    float2 uv; //UV coords
+} SR_Point;
+
+typedef struct {
+    float3 lightDir;
+    float3 viewPos;
+} SR_RenderProps;
+
+
+typedef float4(*SR_VertexFunc)(mat4x4* modelview, mat4x4* persp, SR_Point* pixel);
+typedef col4(*SR_PixelFunc)(SR_RenderProps* props, SR_Point* pixel, SR_Texture* textures[SR_MAX_TEXTURES]);
+
 SR_DLLFUNC SR_Pipeline* SR_CreatePipeline(void* initalTarget, int w, int h, SR_COLOURFORMAT format);
 SR_DLLFUNC void SR_DestroyPipeline(SR_Pipeline* pipeline);
 
@@ -68,7 +84,10 @@ SR_DLLFUNC void SR_SetCullMode(SR_Pipeline* pipeline, enum SR_CULLMODE mode);
 
 SR_DLLFUNC SR_ERROR SR_UpdateRenderTarget(SR_Pipeline* pipeline, void* target, int w, int h, SR_COLOURFORMAT format);
 
-SR_DLLFUNC SR_ERROR SR_BindLayout(SR_Pipeline* pipeline, enum SR_LAYOUT_PROP* props, int count);
+SR_DLLFUNC void SR_BindVertexFunc(SR_Pipeline* pipeline, SR_VertexFunc func);
+SR_DLLFUNC void SR_BindPixelFunc(SR_Pipeline* pipeline, SR_PixelFunc func);
+
+SR_DLLFUNC SR_ERROR SR_BindLayout(SR_Pipeline* pipeline, SR_LAYOUT_PROP* props, int count);
 SR_DLLFUNC void SR_BindModelview(SR_Pipeline* pipeline, mat4x4* matrix);
 SR_DLLFUNC SR_ERROR SR_BindTexture(SR_Pipeline* pipeline, SR_Texture* texture, int slot);
 

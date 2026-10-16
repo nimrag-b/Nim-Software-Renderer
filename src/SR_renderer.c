@@ -9,6 +9,16 @@
 
 //#define SR_AFFINE_MAPPING
 
+//#define SR_DONT_VALIDATE
+// 
+// this option will strip all validation, meaning that functions will never check to make sure that its accessing optional data.
+// This can potentially cause code to run faster
+// ONLY ENABLE IF: 
+//      a texture is always bound
+//      
+//      every model has a texcoord, normal, and colour data
+
+
 #define SR_PI 3.14159
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
@@ -55,23 +65,19 @@ typedef struct {
     char mHasNormal;
 } SR_VertexLayout;
 
-typedef struct {
-    float4 pos; //position
-    float3 normal;
-    col4 col; //colour rgba
-    float2 uv; //UV coords
-} SR_Point;
+
 
 typedef struct SR_Pipeline{
     //pipeline funcs
-    float4 (*mVertexFunc)(mat4x4* modelview, mat4x4* persp, float x, float y, float z);
-    col4 (*mPixelFunc)(SR_Point* pixel, SR_Texture** textures);
+    SR_VertexFunc mVertexFunc;
+    SR_PixelFunc mPixelFunc;
     void (*mRasterizeFunc)(SR_Pipeline* pipeline, SR_Point* p1, SR_Point* p2, SR_Point* p3, float4* s1, float4* s2, float4* s3);
 
     //state objects
     SR_DestBuf mDest;
     SR_VertexLayout mVertexLayout;
     SR_Texture* mTextures[SR_MAX_TEXTURES];
+    SR_RenderProps mRenderProps;
 
     mat4x4 mPersp;
     mat4x4 mModelView;
@@ -138,6 +144,9 @@ SR_Pipeline* SR_CreatePipeline(void* initalTarget, int w, int h, SR_COLOURFORMAT
     pipeline->mVertexFunc = SR_DefaultVertexFunc;
     pipeline->mPixelFunc = SR_DefaultPixelFunc;
     pipeline->mRasterizeFunc = SR_RasterizeTris;
+
+    pipeline->mRenderProps.lightDir = (float3){ 0.5f,0.5f,0 };
+    pipeline->mRenderProps.viewPos = (float3){ 0,0,0 };
 
     return pipeline;
 }
@@ -251,6 +260,27 @@ SR_ERROR SR_UpdateRenderTarget(SR_Pipeline* pipeline, void* target, int w, int h
     return SR_ERR_NONE;
 }
 
+SR_UpdateRenderProps(SR_Pipeline* pipeline, SR_RenderProps* props) {
+    memcpy(&pipeline->mRenderProps, props, sizeof(SR_RenderProps));
+}
+
+void SR_BindVertexFunc(SR_Pipeline* pipeline, SR_VertexFunc func) {
+    if (func == NULL) {
+        pipeline->mVertexFunc = SR_DefaultVertexFunc;
+    }
+    else {
+        pipeline->mVertexFunc = func;
+    }
+}
+void SR_BindPixelFunc(SR_Pipeline* pipeline, SR_PixelFunc func) {
+    if (func == NULL) {
+        pipeline->mPixelFunc = SR_DefaultPixelFunc;
+    }
+    else {
+        pipeline->mPixelFunc = func;
+    }
+}
+
 SR_ERROR SR_BindLayout(SR_Pipeline* pipeline, SR_LAYOUT_PROP* props, int count ){
 
     // TODO: Validate that we haved passed a broken layout prop to the function (ie more than one position etc)
@@ -341,8 +371,14 @@ col4 SR_RGBAToDestPixelColour(SR_COLOURFORMAT fmt, col4 v) {
         return (col4) { v.b, v.g, v.r, v.a };
 
     default:
+#ifdef SR_DONT_VALIDATE
+        return v;
+#else
         printf("err format %d\n", fmt);
         return (col4) { 0, 0, 0, 255 }; //if err, return black;
+#endif // SR_DONT_VALIDATE
+
+
     }
 }
 
@@ -360,8 +396,13 @@ col4 SR_TransformToPixelColour(SR_COLOURFORMAT fmt, fcol4 v){
         return (col4) {CLAMP(v.b,0,1) * 255,CLAMP(v.g,0,1) * 255,  CLAMP(v.r,0,1) * 255, CLAMP(v.a,0,1) * 255};
     
     default:
-        printf("err format %d\n",fmt);
-        return (col4){0,0,0,255}; //if err, return black;
+#ifdef SR_DONT_VALIDATE
+        return (col4) { 0, 0, 0, 255 };
+#else
+        printf("err format %d\n", fmt);
+        return (col4) { 0, 0, 0, 255 }; //if err, return black;
+#endif // SR_DONT_VALIDATE
+
     }
 
 }
@@ -379,8 +420,14 @@ fcol4 SR_TransformToFloatColour(SR_COLOURFORMAT fmt, col4 v){
     case SR_COLOUR_BGRA32:
         return (fcol4) {v.b / 255.0f,v.g / 255.0f,v.r / 255.0f,v.a / 255.0f};
     default:
-        printf("err format %d\n",fmt);
-        return (fcol4){0,0,0,1}; //if err, return black;
+#ifdef SR_DONT_VALIDATE
+        return (fcol4) { 0, 0, 0, 1 };
+#else
+        printf("err format %d\n", fmt);
+        return (fcol4) { 0, 0, 0, 1 }; //if err, return black;
+#endif // SR_DONT_VALIDATE
+
+
     }
 
 }
@@ -417,8 +464,9 @@ col4 coladd(col4 a, col4 b) {
 }
 
 
-float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, float x, float y, float z){
-    float4 p = mat4mul(modelview, (float4){x,y,z,1.0f});
+float4 SR_DefaultVertexFunc(mat4x4* modelview, mat4x4* persp, SR_Point* pixel){
+    float4 p = mat4mul(modelview, (float4){pixel->pos.x, pixel->pos.y, pixel->pos.z,1.0f});
+    pixel->normal = mat4mul3(modelview, pixel->normal);
     p = mat4mul(persp,p);
     return p;
 }
@@ -449,18 +497,10 @@ float3 float3add(float3 a, float3 b) {
 
 #define COL4CONV(f4) (col4){CLAMP(f4.r,0,1)*255,CLAMP(f4.g,0,1)*255,CLAMP(f4.b,0,1)*255,CLAMP(f4.a,0,1)*255}
 
-col4 SR_DefaultPixelFunc(SR_Point* p, SR_Texture** textures){
+col4 SR_DefaultPixelFunc(SR_RenderProps* props, SR_Point* p, SR_Texture** textures){
 
-    float diffusePower = 1;
 
-    float3 lightDir = { 0,0,1 };
-
-    //lx = lx - p->pos.x;
-    //ly = ly - p->pos.y;
-    //lz = lz - p->pos.z;
-
-    lightDir = float3normalize(lightDir);
-    //dist *= dist;
+    float3 lightDir = float3normalize(props->lightDir);
 
     float diff = CLAMP(float3dot(p->normal, lightDir), 0, 1.0);
 
@@ -504,7 +544,9 @@ struct char4 {
 };
 
 col4 SR_Sample(SR_Texture* texture, float x, float y){
-
+#ifndef SR_DONT_VALIDATE
+    if(!texture) return (col4){255,255,255,255};
+#endif
     int i = CLAMP(x,0,1) * texture->w;
     int j = CLAMP(y,0,1) * texture->h;
 
@@ -518,9 +560,12 @@ void SR_DrawPixelUnchecked(SR_Pipeline* pipeline, int x, int y, col4 col){
 }
 
 void SR_DrawPixel(SR_Pipeline* pipeline, int x, int y, col4 col){
+
+
     if(!pipeline->mDest.px){
         return;
     }
+
     if (x >= 0 && x < pipeline->mScrWidth && y >= 0 && y < pipeline->mScrHeight){
 
         SR_DrawPixelUnchecked(pipeline, x, y, col);
@@ -642,7 +687,7 @@ void SR_RasterizeTris(
                 p.normal.z = (p1->normal.z * bx) + (p2->normal.z * by) + (p3->normal.z * bz);
 
                 //pixel should be on screen by this point
-                SR_DrawPixelUnchecked(pipeline, i,j, pipeline->mPixelFunc(&p, pipeline->mTextures));
+                SR_DrawPixelUnchecked(pipeline, i,j, pipeline->mPixelFunc(&pipeline->mRenderProps, &p, pipeline->mTextures));
             }
         }
     }
@@ -799,16 +844,6 @@ void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsign
             p[v].pos.y = f[layout.mPosStart + 1];
             p[v].pos.z = f[layout.mPosStart + 2];
 
-            
-            scr_pos[v] = pipeline->mVertexFunc(modelview, persp, p[v].pos.x, p[v].pos.y, p[v].pos.z);
-
-            float ox = COORD_NORMALISE(scr_pos[v].x / scr_pos[v].z) * pipeline->mScrWidth;
-            float oy = COORD_NORMALISE(scr_pos[v].y / scr_pos[v].z) * pipeline->mScrHeight;
-#ifdef LOG_DRAW
-            printf("[%d] -> (%.1f,%.1f,%.1f,%.1f) -> (%.1f,%.1f,%.1f,%.1f) -> (%d,%d)\n",ind[v], f[layout.mPosStart],f[layout.mPosStart + 1],f[layout.mPosStart + 1],1.0f,p[v].pos.x,p[v].pos.y,p[v].pos.z,p[v].pos.w, ox,oy);
-#endif
-            scr_pos[v].x = ox;
-            scr_pos[v].y = oy;
 
             if (layout.mHasTexCoord) {
                 p[v].uv.x = f[layout.mTexcoordStart];
@@ -820,6 +855,16 @@ void SR_DrawIndexed(SR_Pipeline* pipeline, float* vertices, int* indices, unsign
                 p[v].normal.y = f[layout.mNormalStart + 1];
                 p[v].normal.z = f[layout.mNormalStart + 2];
             }
+
+            scr_pos[v] = pipeline->mVertexFunc(modelview, persp, &p[v]);
+
+            float ox = COORD_NORMALISE(scr_pos[v].x / scr_pos[v].z) * pipeline->mScrWidth;
+            float oy = COORD_NORMALISE(scr_pos[v].y / scr_pos[v].z) * pipeline->mScrHeight;
+#ifdef LOG_DRAW
+            printf("[%d] -> (%.1f,%.1f,%.1f,%.1f) -> (%.1f,%.1f,%.1f,%.1f) -> (%d,%d)\n", ind[v], f[layout.mPosStart], f[layout.mPosStart + 1], f[layout.mPosStart + 1], 1.0f, p[v].pos.x, p[v].pos.y, p[v].pos.z, p[v].pos.w, ox, oy);
+#endif
+            scr_pos[v].x = ox;
+            scr_pos[v].y = oy;
 
         }
 
