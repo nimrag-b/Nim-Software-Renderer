@@ -1,6 +1,10 @@
 #ifndef _SR_TYPE_H_
 #define _SR_TYPE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct{
     float x, y, z, w;
 } float4;
@@ -24,12 +28,10 @@ typedef struct{
     float x, y;
 } float2;
 
-typedef struct{
 
-    float m00, m01, m02, m03;
-    float m10, m11, m12, m13;
-    float m20, m21, m22, m23;
-    float m30, m31, m32, m33;
-} mat4x4;
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

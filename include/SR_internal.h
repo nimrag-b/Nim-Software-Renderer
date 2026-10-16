@@ -7,4 +7,4 @@
 #define SR_DLLFUNC
 #endif
 
-#endif
+#endif //_SR_INTERNAL_H_

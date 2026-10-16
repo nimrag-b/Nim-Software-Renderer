@@ -1,16 +1,28 @@
+/*
+ * This file contains platform specific helper functions. These functions will only work if a platform helper backend is supplied.
+ * 
+ */
+
 #ifndef _SR_PLATFORM_H_
 #define _SR_PLATFORM_H_
 
 #include "SR.h"
 #include "SR_internal.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+SR_DLLFUNC long long SR_GetTicks();
+SR_DLLFUNC long long SR_TicksPerSecond();
+
+
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 typedef struct {
     HBITMAP hbm;
     void* px;
@@ -31,9 +43,12 @@ SR_DLLFUNC void SR_HWNDRender(SR_HWNDAttached* sr_hwnd, HDC hdc);
 SR_DLLFUNC SR_HWNDAttached* SR_AttachToHWND(HWND hwnd, SR_Pipeline* pipeline);
 SR_DLLFUNC void SR_DetachFromHWND(SR_HWNDAttached* sr_hwnd);
 
+#endif //_WIN32
+
+
 #ifdef __cplusplus
 }
-#endif
+#endif //__cplusplus
 
-#endif
-#endif
+
+#endif //_SR_PLATFORM_H_

@@ -6,6 +6,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+typedef struct {
+
+    float m00, m01, m02, m03;
+    float m10, m11, m12, m13;
+    float m20, m21, m22, m23;
+    float m30, m31, m32, m33;
+} mat4x4;
+
 SR_DLLFUNC mat4x4 mat4identity();
 SR_DLLFUNC mat4x4 mat4translate(float x, float y, float z);
 SR_DLLFUNC mat4x4 mat4scale(float x, float y, float z);
@@ -22,4 +30,4 @@ SR_DLLFUNC mat4x4 mat4transform(float scaleX, float scaleY, float scaleZ, float 
 #ifdef __cplusplus
 }
 #endif
-#endif
+#endif //_SR_MATRIX_H_
